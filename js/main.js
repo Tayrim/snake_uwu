@@ -1,10 +1,9 @@
 function resize() {
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   const isLandscapeTouch = IS_TOUCH && window.innerWidth > window.innerHeight;
-  
+
   let size;
   if (isLandscapeTouch) {
-    // В landscape кнопки слева и справа от canvas
     const leftEl = document.getElementById('ctrl-left');
     const rightEl = document.getElementById('ctrl-right');
     const leftW = leftEl ? leftEl.offsetWidth : 60;
@@ -15,7 +14,6 @@ function resize() {
     size = Math.floor(Math.min(availW, availH));
     size = Math.max(180, size);
   } else {
-    // Портрет или десктоп
     const gap = IS_TOUCH ? 15 : 0;
     const controlsH = IS_TOUCH ? controlsEl.offsetHeight : 0;
     const availW = window.innerWidth - 20;
@@ -24,7 +22,7 @@ function resize() {
     if (!IS_TOUCH) size = Math.min(size, 600);
     size = Math.max(200, size);
   }
-  
+
   canvas.style.width = size + 'px';
   canvas.style.height = size + 'px';
   canvas.width = Math.round(size * dpr);
@@ -46,12 +44,35 @@ window.addEventListener('orientationchange', () => {
   setTimeout(resize, 1000);
 });
 
+// Блокировка телефона: звук выключается, игра на паузе
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (state === 'play' && !quickPaused) {
+      quickPaused = true;
+      pauseStart = performance.now();
+    }
+    stopMusic();
+    if (audioCtx) audioCtx.suspend();
+  } else {
+    if (audioCtx) audioCtx.resume();
+    if (musicVolume > 0.01) {
+      const menuLike = state === 'menu' || state === 'shop' || state === 'records' || state === 'levels' || state === 'gameover' || state === 'levelwin';
+      startMusic(menuLike ? 'menu' : 'game');
+    }
+  }
+});
+
 function loop(now) {
   let dt = now - lastFrame;
   lastFrame = now;
   if (dt > 100) dt = 100;
   update(now, dt);
   draw(now);
+
+  // Кнопки управления видны только в игровом процессе
+  const ingame = state === 'countdown' || state === 'play' || state === 'pausemenu' || state === 'gameover' || state === 'levelwin';
+  document.body.classList.toggle('ingame', ingame);
+
   requestAnimationFrame(loop);
 }
 
@@ -71,8 +92,9 @@ requestAnimationFrame(() => {
 // Музыка стартует после первого взаимодействия (требование браузеров)
 function tryStartMusic() {
   ensureAudio();
-  if (!currentMusicMode) {
-    startMusic(state === 'menu' ? 'menu' : 'game');
+  if (!currentMusicMode && musicVolume > 0.01) {
+    const menuLike = state === 'menu' || state === 'shop' || state === 'records' || state === 'levels';
+    startMusic(menuLike ? 'menu' : 'game');
   }
   document.removeEventListener('click', tryStartMusic);
   document.removeEventListener('touchstart', tryStartMusic);

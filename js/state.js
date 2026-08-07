@@ -23,16 +23,29 @@ let dir = { x: 0, y: -GRID };
 let dirQueue = [];
 let growPending = false;
 
-let level = 1;
-let applesInLevel = 0;
+// --- РЕЖИМ УРОВНЕЙ ---
+let lvlDiff = 'easy';
+let lvlIndex = 1;
+let levelProgress = { easy: 0, medium: 0, hard: 0 };
+let levelTimes = {};
+let lives = 3;
+let applesEaten = 0;
+let applesNeed = 0;
+let door = null;
+let lastLevelResult = null;
+let maxLevel = 0;
+
 let walls = [];
 let wallsSet = new Set();
-let lastLevelUp = 0;
 
 let food = { x: 0, y: 0 };
 let boost = null;
 let boostTimer = 0;
 let boostCooldown = 0;
+let banana = null;
+let bananaTimer = 0;
+let bananaCooldown = 0;
+let yellowUntil = 0;
 
 let score = 0;
 let high = 0;
@@ -45,7 +58,6 @@ let ownedThemes = [];
 let themeId = 'classic';
 let ownedAvatars = [];
 let avatarId = 'snake';
-let maxLevel = 0;
 let nick = 'Удав';
 
 let scoresCache = null;
@@ -58,30 +70,42 @@ let lastStep = 0;
 let countdownStart = 0;
 let mouse = { x: -1, y: -1 };
 
+// --- ДИАЛОГИ ---
 let profileOpen = false;
-
-// --- ПОДТВЕРЖДЕНИЕ ПОКУПОК ---
 let confirmOpen = false;
 let pendingPurchase = null;
+let fundsOpen = false;
+let settingsOpen = false;
+let dailyOpen = false;
+
+const profileDialogEl = document.getElementById('profileDialog');
+const nickInputEl = document.getElementById('nickInput');
+const avatarGridEl = document.getElementById('avatarGrid');
 const confirmDialogEl = document.getElementById('confirmDialog');
 const confirmTextEl = document.getElementById('confirmText');
-
-// --- НЕДОСТАТОЧНО СРЕДСТВ ---
-let fundsOpen = false;
 const fundsDialogEl = document.getElementById('fundsDialog');
 const fundsTextEl = document.getElementById('fundsText');
+const settingsDialogEl = document.getElementById('settingsDialog');
+const musicVolEl = document.getElementById('musicVol');
+const musicVolValEl = document.getElementById('musicVolVal');
+const sfxVolEl = document.getElementById('sfxVol');
+const sfxVolValEl = document.getElementById('sfxVolVal');
+const dailyDialogEl = document.getElementById('dailyDialog');
+const dailyGridEl = document.getElementById('dailyGrid');
 
 // --- КНОПКИ ---
 let BTN_MENU_1 = {}, BTN_MENU_2 = {}, BTN_MENU_3 = {};
-let BTN_SHOP = {};
+let BTN_SHOP = {}, BTN_GIFT = {}, BTN_SETTINGS = {};
 let BTN_BACK = {};
 let BTN_PROFILE = {};
-let BTN_MUSIC = {};
 let STAT_CARD = {}, STAT_WEEK = {}, STAT_REC = {}, STAT_LEAD = {};
 let TAB_WEEK = {}, TAB_REC = {}, TAB_LEAD = {};
 let TAB_SHOP_SKINS = {}, TAB_SHOP_BG = {}, TAB_SHOP_FRAMES = {};
 let BTN_CONT = {}, BTN_RESTART = {}, BTN_MENU_BTN = {};
 let BTN_GO_RESTART = {}, BTN_GO_MENU = {};
+let BTN_LW_NEXT = {}, BTN_LW_RETRY = {}, BTN_LW_LIST = {};
+let DIFF_TABS = [];
+let LEVEL_CELLS = [];
 let SHOP_ROWS = [];
 
 // --- ФОНОВЫЙ CANVAS ---
@@ -98,8 +122,3 @@ let particles = [];
 let touchStart = null;
 let touchMoved = false;
 let touchTime = 0;
-
-// --- DOM ЭЛЕМЕНТЫ ПРОФИЛЯ ---
-const profileDialogEl = document.getElementById('profileDialog');
-const nickInputEl = document.getElementById('nickInput');
-const avatarGridEl = document.getElementById('avatarGrid');

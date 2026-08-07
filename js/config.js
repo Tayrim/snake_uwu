@@ -12,16 +12,30 @@ const C = {
   bg: '#0f172a', grid: '#1e293b',
   text: '#f8fafc', btn: '#334155', btnHover: '#475569',
   accent: '#eab308', gold: '#facc15', dim: 'rgba(0,0,0,0.6)', gray: '#94a3b8',
-  apple: '#ef4444', boost: '#facc15', ok: '#4ade80', wall: '#64748b'
+  apple: '#ef4444', boost: '#facc15', ok: '#4ade80', wall: '#64748b',
+  heart: '#ef4444', door: '#a855f7', banana: '#facc15'
 };
 
 const NICK_BASE = ['Удав','Питон','Кобра','Гадюка','Полоз','Мамба','Тайпан','Анаконда','Уж','Змей'];
 
 const STAR = [[10,1],[13,7],[19,7],[14,11],[16,18],[10,14],[4,18],[6,11],[1,7],[7,7]];
 
-// Кнопка музыки (правый верхний угол)
-const MUSIC_BTN_SIZE = 44;
-const MUSIC_BTN_MARGIN = 15;
+// --- ЕЖЕДНЕВНЫЕ НАГРАДЫ ---
+const DAILY_REWARDS = [70, 140, 210, 280, 350, 420, 700];
+
+// --- РЕЖИМ УРОВНЕЙ ---
+const LEVELS_PER_DIFF = 14;
+const LEVEL_REWARD = 150;
+const LEVEL_DIFFS = [
+  { id: 'easy',   name: 'Лёгкий',  baseSpeed: 8,  speedUp: 0.25, apples: l => 5 + Math.floor((l - 1) / 4) },
+  { id: 'medium', name: 'Средний', baseSpeed: 10, speedUp: 0.45, apples: l => 6 + Math.floor((l - 1) / 4) },
+  { id: 'hard',   name: 'Тяжёлый', baseSpeed: 12, speedUp: 0.65, apples: l => 7 + Math.floor((l - 1) / 4) }
+];
+
+// --- БАНАН ---
+const BANANA_POINTS = 5;
+const BANANA_YELLOW_MS = 3000;
+const BANANA_LIFE = 6000;
 
 // --- СКИНЫ ---
 const SKINS = [

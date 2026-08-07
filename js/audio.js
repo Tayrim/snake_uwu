@@ -1,9 +1,10 @@
 let audioCtx = null;
-let musicEnabled = true;
-let musicVolume = 0.25;
+let musicVolume = 0.5;   // 0..1 (ползунок «Музыка»)
+let sfxVolume = 1;       // 0..1 (ползунок «Звуки»)
 let musicNodes = [];
 let musicTimer = null;
 let currentMusicMode = null;
+let currentTrackIdx = -1;
 
 function ensureAudio() {
   if (!audioCtx) {
@@ -14,14 +15,14 @@ function ensureAudio() {
 }
 
 function beep(freq, dur, type='sine', vol=0.06, when=0) {
-  if (!audioCtx) return;
+  if (!audioCtx || sfxVolume <= 0.01) return;
   try {
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = type;
     o.frequency.value = freq;
     g.gain.value = 0;
-    g.gain.setValueAtTime(vol, audioCtx.currentTime + when);
+    g.gain.setValueAtTime(vol * sfxVolume, audioCtx.currentTime + when);
     g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + when + dur);
     o.connect(g); g.connect(audioCtx.destination);
     o.start(audioCtx.currentTime + when);
@@ -34,6 +35,8 @@ const SFX = {
   hover:   () => beep(500, 0.03, 'sine', 0.02),
   eat:     () => { beep(900, 0.06, 'sine', 0.07); beep(1300, 0.08, 'sine', 0.06, 0.04); },
   bonus:   () => { beep(800, 0.07, 'triangle', 0.06); beep(1200, 0.07, 'triangle', 0.06, 0.05); beep(1600, 0.1, 'triangle', 0.06, 0.1); },
+  banana:  () => { beep(700, 0.06, 'triangle', 0.07); beep(1000, 0.08, 'triangle', 0.07, 0.05); },
+  hit:     () => { beep(150, 0.12, 'sawtooth', 0.09); beep(90, 0.18, 'sawtooth', 0.08, 0.06); },
   die:     () => { beep(440, 0.1, 'sawtooth', 0.08); beep(220, 0.22, 'sawtooth', 0.08, 0.08); beep(110, 0.3, 'sawtooth', 0.07, 0.22); },
   levelUp: () => { beep(600, 0.09, 'sine', 0.07); beep(900, 0.09, 'sine', 0.07, 0.08); beep(1200, 0.14, 'sine', 0.07, 0.16); beep(1600, 0.18, 'sine', 0.07, 0.26); },
   buy:     () => { beep(1000, 0.07, 'triangle', 0.06); beep(1500, 0.08, 'triangle', 0.06, 0.06); beep(2000, 0.12, 'triangle', 0.06, 0.12); },
@@ -43,7 +46,55 @@ const SFX = {
 };
 
 // ============================================
-// ФОНОВАЯ МУЗЫКА (процедурная)
+// 7 ФОНОВЫХ МЕЛОДИЙ
+// ============================================
+const TRACKS = [
+  { // 0 — меню: спокойная
+    beat: 0.35,
+    chords: [[220,261.63,329.63],[174.61,220,261.63],[196,246.94,293.66],[220,261.63,329.63]],
+    melody: [440,0,523.25,493.88,440,0,392,440, 493.88,0,523.25,587.33,523.25,0,440,493.88,
+             392,0,440,493.88,523.25,0,587.33,523.25, 440,0,392,440,493.88,0,440,0]
+  },
+  { // 1 — меню: мечтательная
+    beat: 0.33,
+    chords: [[261.63,329.63,392],[220,261.63,329.63],[246.94,293.66,349.23],[196,246.94,293.66]],
+    melody: [523.25,587.33,659.25,587.33,523.25,0,659.25,698.46, 659.25,587.33,523.25,0,493.88,523.25,587.33,523.25,
+             493.88,440,493.88,523.25,587.33,0,523.25,493.88, 440,0,493.88,523.25,587.33,0,523.25,0]
+  },
+  { // 2 — меню: загадочная
+    beat: 0.36,
+    chords: [[146.83,174.61,220],[164.81,196,246.94],[138.59,164.81,207.65],[146.83,174.61,220]],
+    melody: [293.66,0,349.23,329.63,293.66,0,261.63,293.66, 349.23,0,392,440,392,0,349.23,329.63,
+             293.66,0,261.63,293.66,329.63,0,349.23,329.63, 293.66,0,261.63,220,261.63,0,293.66,0]
+  },
+  { // 3 — игра: энергичная
+    beat: 0.28,
+    chords: [[196,246.94,293.66],[220,277.18,329.63],[233.08,293.66,349.23],[196,246.94,293.66]],
+    melody: [392,440,523.25,440,392,329.63,293.66,329.63, 392,523.25,587.33,523.25,440,392,440,523.25,
+             587.33,659.25,587.33,523.25,440,392,349.23,392, 440,523.25,587.33,523.25,440,392,329.63,392]
+  },
+  { // 4 — игра: быстрая
+    beat: 0.24,
+    chords: [[164.81,196,246.94],[196,246.94,293.66],[207.65,246.94,311.13],[164.81,196,246.94]],
+    melody: [329.63,392,493.88,392,329.63,0,493.88,587.33, 493.88,392,329.63,0,293.66,329.63,392,329.63,
+             293.66,246.94,293.66,329.63,392,0,493.88,392, 329.63,0,293.66,329.63,392,0,329.63,0]
+  },
+  { // 5 — игра: синтвейв
+    beat: 0.26,
+    chords: [[220,261.63,329.63],[246.94,293.66,349.23],[261.63,329.63,392],[220,261.63,329.63]],
+    melody: [440,440,523.25,440,587.33,523.25,493.88,440, 493.88,523.25,587.33,659.25,587.33,523.25,493.88,523.25,
+             440,440,523.25,440,587.33,523.25,493.88,493.88, 523.25,0,493.88,440,392,0,440,0]
+  },
+  { // 6 — игра: напряжённая
+    beat: 0.27,
+    chords: [[146.83,174.61,220],[164.81,196,246.94],[174.61,220,261.63],[146.83,174.61,220]],
+    melody: [293.66,349.23,392,349.23,293.66,261.63,246.94,261.63, 293.66,392,440,392,349.23,293.66,349.23,392,
+             440,493.88,440,392,349.23,293.66,261.63,293.66, 349.23,392,349.23,293.66,261.63,246.94,261.63,293.66]
+  }
+];
+
+// ============================================
+// МУЗЫКА
 // ============================================
 function stopMusic() {
   if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
@@ -52,15 +103,15 @@ function stopMusic() {
   currentMusicMode = null;
 }
 
-function playMusicNote(freq, start, dur, type, vol) {
-  if (!audioCtx || !musicEnabled) return;
+function playMusicNote(freq, start, dur, vol) {
+  if (!audioCtx || musicVolume <= 0.01) return;
   try {
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    o.type = type;
+    o.type = 'triangle';
     o.frequency.value = freq;
     g.gain.value = 0;
-    g.gain.setValueAtTime(vol * musicVolume, start);
+    g.gain.setValueAtTime(vol * musicVolume * 0.6, start);
     g.gain.exponentialRampToValueAtTime(0.001, start + dur);
     o.connect(g); g.connect(audioCtx.destination);
     o.start(start);
@@ -70,71 +121,46 @@ function playMusicNote(freq, start, dur, type, vol) {
   } catch(e) {}
 }
 
-// Мелодия для МЕНЮ (спокойная)
-const MENU_CHORDS = [
-  [261.63, 311.13, 392.00],
-  [293.66, 349.23, 440.00],
-  [329.63, 392.00, 493.88],
-  [261.63, 311.13, 392.00]
-];
-const MENU_MELODY = [
-  523.25, 0, 622.25, 587.33, 523.25, 0, 466.16, 523.25,
-  587.33, 0, 622.25, 698.46, 622.25, 0, 523.25, 587.33,
-  466.16, 0, 523.25, 587.33, 622.25, 0, 698.46, 622.25,
-  523.25, 0, 466.16, 523.25, 587.33, 0, 523.25, 0
-];
-
-// Мелодия для ИГРЫ (динамичная)
-const GAME_CHORDS = [
-  [196.00, 246.94, 293.66],
-  [220.00, 277.18, 329.63],
-  [233.08, 293.66, 349.23],
-  [196.00, 246.94, 293.66]
-];
-const GAME_MELODY = [
-  392.00, 440.00, 523.25, 440.00, 392.00, 329.63, 293.66, 329.63,
-  392.00, 523.25, 587.33, 523.25, 440.00, 392.00, 440.00, 523.25,
-  587.33, 659.25, 587.33, 523.25, 440.00, 392.00, 349.23, 392.00,
-  440.00, 523.25, 587.33, 523.25, 440.00, 392.00, 329.63, 392.00
-];
-
 function startMusic(mode) {
   if (!audioCtx || currentMusicMode === mode) return;
   stopMusic();
-  if (!musicEnabled) { currentMusicMode = mode; return; }
+  if (musicVolume <= 0.01) { currentMusicMode = mode; return; }
 
-  const chords = mode === 'menu' ? MENU_CHORDS : GAME_CHORDS;
-  const melody = mode === 'menu' ? MENU_MELODY : GAME_MELODY;
-  const beatLen = mode === 'menu' ? 0.35 : 0.28;
-  const chordVol = mode === 'menu' ? 0.15 : 0.18;
-  const melodyVol = mode === 'menu' ? 0.25 : 0.32;
+  const pool = mode === 'menu' ? [0, 1, 2] : [3, 4, 5, 6];
+  let idx = pool[Math.floor(Math.random() * pool.length)];
+  if (idx === currentTrackIdx && pool.length > 1) {
+    idx = pool[(pool.indexOf(idx) + 1) % pool.length];
+  }
+  currentTrackIdx = idx;
+  const track = TRACKS[idx];
+
+  const beatLen = track.beat;
+  const chordVol = 0.16;
+  const melodyVol = 0.3;
   const bassVol = 0.22;
 
   let step = 0;
 
   function scheduleBar() {
-    if (!musicEnabled || !audioCtx) return;
-    const chordIdx = Math.floor((step / 8) % chords.length);
-    const chord = chords[chordIdx];
+    if (musicVolume <= 0.01 || !audioCtx) return;
+    const chordIdx = Math.floor((step / 8) % track.chords.length);
+    const chord = track.chords[chordIdx];
 
-    // Аккорд (пад)
     chord.forEach(f => {
-      playMusicNote(f, audioCtx.currentTime, beatLen * 8, 'sine', chordVol);
-      playMusicNote(f * 2, audioCtx.currentTime, beatLen * 8, 'sine', chordVol * 0.3);
+      playMusicNote(f, audioCtx.currentTime, beatLen * 8, chordVol);
+      playMusicNote(f * 2, audioCtx.currentTime, beatLen * 8, chordVol * 0.3);
     });
 
-    // Бас
-    playMusicNote(chord[0] / 2, audioCtx.currentTime, beatLen * 8, 'triangle', bassVol);
+    playMusicNote(chord[0] / 2, audioCtx.currentTime, beatLen * 8, bassVol);
 
-    // Мелодия + ритм на 8 шагов
     for (let i = 0; i < 8; i++) {
-      const noteIdx = (step + i) % melody.length;
-      const freq = melody[noteIdx];
+      const noteIdx = (step + i) % track.melody.length;
+      const freq = track.melody[noteIdx];
       if (freq > 0) {
-        playMusicNote(freq, audioCtx.currentTime + i * beatLen, beatLen * 0.9, 'triangle', melodyVol);
+        playMusicNote(freq, audioCtx.currentTime + i * beatLen, beatLen * 0.9, melodyVol);
       }
       if (i % 2 === 0) {
-        playMusicNote(80, audioCtx.currentTime + i * beatLen, 0.08, 'sine', 0.3);
+        playMusicNote(80, audioCtx.currentTime + i * beatLen, 0.08, 0.3);
       }
     }
 
@@ -144,34 +170,28 @@ function startMusic(mode) {
   scheduleBar();
   const barTime = beatLen * 8 * 1000;
   musicTimer = setInterval(() => {
-    if (!musicEnabled) { stopMusic(); return; }
+    if (musicVolume <= 0.01) { stopMusic(); return; }
     scheduleBar();
   }, barTime);
 
   currentMusicMode = mode;
 }
 
-function toggleMusic() {
-  musicEnabled = !musicEnabled;
-  saveMusicState();
-  const m = currentMusicMode || 'menu';
-  stopMusic();
-  if (musicEnabled) startMusic(m);
-  SFX.click();
-}
-
-function loadMusicState() {
+// ============================================
+// ГРОМКОСТЬ
+// ============================================
+function loadVolumes() {
   try {
-    const v = localStorage.getItem('snake_music');
-    if (v !== null) musicEnabled = v === '1';
-    const vol = localStorage.getItem('snake_volume');
-    if (vol !== null) musicVolume = parseFloat(vol);
+    const m = localStorage.getItem('snake_vol_m');
+    if (m !== null) musicVolume = Math.max(0, Math.min(1, parseInt(m, 10) / 100));
+    const s = localStorage.getItem('snake_vol_s');
+    if (s !== null) sfxVolume = Math.max(0, Math.min(1, parseInt(s, 10) / 100));
   } catch(e) {}
 }
 
-function saveMusicState() {
+function saveVolumes() {
   try {
-    localStorage.setItem('snake_music', musicEnabled ? '1' : '0');
-    localStorage.setItem('snake_volume', String(musicVolume));
+    localStorage.setItem('snake_vol_m', String(Math.round(musicVolume * 100)));
+    localStorage.setItem('snake_vol_s', String(Math.round(sfxVolume * 100)));
   } catch(e) {}
 }

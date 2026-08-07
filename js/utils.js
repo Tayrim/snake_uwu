@@ -3,6 +3,16 @@ const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wallKey = (x, y) => x + ',' + y;
 
+// Сид-рандом для генерации уровней
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
 function canvasPos(clientX, clientY) {
   const r = canvas.getBoundingClientRect();
   return { x: (clientX - r.left) * (WIDTH / r.width), y: (clientY - r.top) * (HEIGHT / r.height) };
@@ -69,12 +79,48 @@ function currentFrame() {
 }
 
 function segColor(sk, i, now) {
+  if (yellowUntil > now) return C.banana; // банановый эффект
   if (sk.rainbow) return 'hsl(' + Math.floor((i * 12 + now / 10) % 360) + ',85%,55%)';
   return sk.body;
 }
 function headColorOf(sk, now) {
+  if (yellowUntil > now) return '#eab308';
   if (sk.rainbow) return 'hsl(' + Math.floor((now / 10) % 360) + ',85%,60%)';
   return sk.head;
+}
+
+// --- УРОВНИ: разблокировки ---
+function diffIndex(id) { return LEVEL_DIFFS.findIndex(d => d.id === id); }
+function diffUnlocked(id) {
+  if (id === 'easy') return true;
+  if (id === 'medium') return levelProgress.easy >= LEVELS_PER_DIFF;
+  return levelProgress.medium >= LEVELS_PER_DIFF;
+}
+function levelUnlocked(diffId, idx) {
+  if (!diffUnlocked(diffId)) return false;
+  return idx <= levelProgress[diffId] + 1;
+}
+function levelKey(diffId, idx) { return diffId + '-' + idx; }
+function fmtTime(sec) {
+  const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+  const ss = String(sec % 60).padStart(2, '0');
+  return mm + ':' + ss;
+}
+
+// --- ЕЖЕДНЕВНЫЕ НАГРАДЫ ---
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function yesterdayStr() {
+  const d = new Date(Date.now() - 86400000);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function dailyInfo() {
+  const d = loadDaily();
+  if (d.last === todayStr()) return { d: d, next: 0, canClaim: false };
+  const next = (d.last === yesterdayStr()) ? (d.day % 7) + 1 : 1;
+  return { d: d, next: next, canClaim: true };
 }
 
 function calcBtns() {
@@ -84,6 +130,8 @@ function calcBtns() {
   BTN_MENU_2 = { x: 205, y: 280, w: 190, h: 56 };
   BTN_MENU_3 = { x: 205, y: 355, w: 190, h: 56 };
   BTN_SHOP = { x: 25, y: 282, w: 160, h: 60 };
+  BTN_GIFT = { x: 25, y: 212, w: 160, h: 60 };
+  BTN_SETTINGS = { x: 25, y: 352, w: 160, h: 60 };
   BTN_BACK = { x: 20, y: 20, w: 110, h: 40 };
   BTN_PROFILE = { x: 15, y: 15, w: 230, h: 50 };
   STAT_CARD = { x: 405, y: 196, w: 180, h: 240 };
@@ -101,16 +149,20 @@ function calcBtns() {
   BTN_MENU_BTN = { x: cx, y: 390, w, h };
   BTN_GO_RESTART = { x: cx, y: 340, w, h };
   BTN_GO_MENU = { x: cx, y: 410, w, h };
-}
+  BTN_LW_NEXT = { x: cx, y: 300, w, h };
+  BTN_LW_RETRY = { x: cx, y: 370, w, h };
+  BTN_LW_LIST = { x: cx, y: 440, w, h };
 
-// Кнопка музыки (правый верхний угол)
-function updateMusicBtn() {
-  BTN_MUSIC = {
-    x: WIDTH - MUSIC_BTN_SIZE - MUSIC_BTN_MARGIN,
-    y: MUSIC_BTN_MARGIN,
-    w: MUSIC_BTN_SIZE,
-    h: MUSIC_BTN_SIZE
-  };
+  DIFF_TABS = [
+    { x: 60,  y: 100, w: 150, h: 44 },
+    { x: 225, y: 100, w: 150, h: 44 },
+    { x: 390, y: 100, w: 150, h: 44 }
+  ];
+  LEVEL_CELLS = [];
+  for (let i = 0; i < LEVELS_PER_DIFF; i++) {
+    const col = i % 7, row = Math.floor(i / 7);
+    LEVEL_CELLS.push({ x: 30 + col * 78, y: 180 + row * 110, w: 70, h: 90, idx: i + 1 });
+  }
 }
 
 function elapsedSec(now) {

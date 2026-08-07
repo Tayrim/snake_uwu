@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Snake pixel</title>
+  <title>Snake Pixel</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -52,6 +52,36 @@
       <div id="fundsText" class="confirmText"></div>
       <div class="row">
         <button id="fundsOk" class="ok">Понятно</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsDialog" class="dialog">
+    <div class="box">
+      <div class="title">Настройки</div>
+      <div class="setRow">
+        <span class="setLabel">🎵 Музыка</span>
+        <input type="range" id="musicVol" min="0" max="100" value="50">
+        <span class="setVal" id="musicVolVal">50</span>
+      </div>
+      <div class="setRow">
+        <span class="setLabel">🔔 Звуки</span>
+        <input type="range" id="sfxVol" min="0" max="100" value="100">
+        <span class="setVal" id="sfxVolVal">100</span>
+      </div>
+      <div class="row">
+        <button id="settingsClose" class="ok">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dailyDialog" class="dialog">
+    <div class="box">
+      <div class="title">Ежедневные награды 🎁</div>
+      <div id="dailyGrid" class="dailyGrid"></div>
+      <div class="row">
+        <button id="dailyClaim" class="ok">Забрать</button>
+        <button id="dailyClose">Закрыть</button>
       </div>
     </div>
   </div>

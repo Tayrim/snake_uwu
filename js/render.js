@@ -38,12 +38,14 @@ function drawBtn(r, label, size, sub) {
   }
 }
 
-function drawTab(r, label, active) {
+function drawTab(r, label, active, locked) {
   const hover = inRect(mouse, r);
   ctx.fillStyle = active ? C.btnHover : (hover ? C.btn : '#1e293b');
+  if (locked) ctx.globalAlpha = 0.5;
   rr(r.x, r.y, r.w, r.h, 8); ctx.fill();
   if (active) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(r.x, r.y, r.w, r.h, 8); ctx.stroke(); }
   text(label, r.x + r.w / 2, r.y + (r.h - 18) / 2, 18, active ? C.gold : C.text, 'center');
+  ctx.globalAlpha = 1;
 }
 
 function drawModeBtn(r, label, icon, base, hoverCol, glow) {
@@ -208,6 +210,30 @@ function drawApple(p) {
   ctx.restore();
 }
 
+function drawBanana(p) {
+  const pulse = 1 + Math.sin(performance.now() / 180) * 0.1;
+  ctx.save();
+  ctx.translate(p.x + GRID / 2, p.y + GRID / 2);
+  ctx.scale(pulse, pulse);
+  ctx.shadowColor = C.banana;
+  ctx.shadowBlur = 12;
+  emoji('🍌', 0, -9, 18, 'center');
+  ctx.restore();
+  ctx.fillStyle = C.banana;
+  ctx.fillRect(p.x, p.y - 4, GRID * (bananaTimer / BANANA_LIFE), 2);
+}
+
+function drawDoor(p) {
+  const pulse = 1 + Math.sin(performance.now() / 250) * 0.08;
+  ctx.save();
+  ctx.translate(p.x + GRID / 2, p.y + GRID / 2);
+  ctx.scale(pulse, pulse);
+  ctx.shadowColor = C.door;
+  ctx.shadowBlur = 15;
+  emoji('🚪', 0, -11, 20, 'center');
+  ctx.restore();
+}
+
 function drawBoost(p) {
   const pulse = 1 + Math.sin(performance.now() / 100) * 0.15;
   ctx.save();
@@ -260,16 +286,19 @@ function drawParticles() {
 function drawField() {
   const sk = currentSkin();
   const now = performance.now();
+  const yellow = yellowUntil > now;
   ctx.drawImage(bgCanvas, 0, 0);
   
   if (walls.length) drawWalls();
   drawApple(food);
   if (boost) drawBoost(boost);
+  if (banana) drawBanana(banana);
+  if (door) drawDoor(door);
   
   for (let i = snake.length - 1; i >= 1; i--) {
     const col = segColor(sk, i, now);
     ctx.shadowColor = col;
-    ctx.shadowBlur = 5;
+    ctx.shadowBlur = yellow ? 12 : 5; // банановое свечение
     ctx.fillStyle = col; 
     rr(snake[i].x + 0.5, snake[i].y + 0.5, GRID - 1, GRID - 1, 4); 
     ctx.fill();
@@ -293,7 +322,7 @@ function drawField() {
     
     const tailCol = segColor(sk, snake.length - 1, now);
     ctx.shadowColor = tailCol;
-    ctx.shadowBlur = 5;
+    ctx.shadowBlur = yellow ? 12 : 5;
     ctx.fillStyle = tailCol;
     
     ctx.beginPath();
@@ -309,16 +338,24 @@ function drawField() {
 }
 
 function drawHUD(now) {
-  const sec = state === 'gameover' ? frozenSec : elapsedSec(now);
+  const sec = state === 'gameover' || state === 'levelwin' ? frozenSec : elapsedSec(now);
   const mm = String(Math.floor(sec / 60)).padStart(2, '0');
   const ss = String(sec % 60).padStart(2, '0');
-  text('Очки: ' + score, 20, 15, 24, C.text);
-  // Рекорд сдвинут влево, чтобы не перекрываться кнопкой музыки
-  text('Рекорд: ' + Math.max(high, score), WIDTH - 70, 15, 24, C.gold, 'right');
-  text('Время: ' + mm + ':' + ss, 20, HEIGHT - 40, 24, C.text);
+
   if (mode === 'level') {
-    text('Уровень: ' + level + ' (' + applesInLevel + '/' + APPLES_PER_LEVEL + ')', WIDTH - 20, HEIGHT - 35, 18, C.gold, 'right');
+    text('Очки: ' + score, 20, 15, 24, C.text);
+    // Жизни-сердечки
+    for (let i = 0; i < 3; i++) {
+      emoji(i < lives ? '❤️' : '🖤', 22 + i * 26, 48, 20);
+    }
+    text('Ур. ' + lvlIndex + ' | 🍎 ' + applesEaten + '/' + applesNeed, WIDTH - 20, 15, 18, C.gold, 'right');
+    text('Время: ' + mm + ':' + ss, 20, HEIGHT - 40, 24, C.text);
+    if (door) text('Дверь открыта! 🚪', WIDTH - 20, HEIGHT - 35, 18, C.door, 'right');
+    else text('Собери яблоки!', WIDTH - 20, HEIGHT - 35, 16, C.gray, 'right');
   } else {
+    text('Очки: ' + score, 20, 15, 24, C.text);
+    text('Рекорд: ' + Math.max(high, score), WIDTH - 20, 15, 24, C.gold, 'right');
+    text('Время: ' + mm + ':' + ss, 20, HEIGHT - 40, 24, C.text);
     text('Множитель: ' + multText(sec), WIDTH - 20, HEIGHT - 35, 18, C.gold, 'right');
   }
 }
@@ -331,21 +368,4 @@ function drawStaticBackground() {
   bgCtx.lineWidth = 1;
   for (let x = 0; x <= WIDTH; x += GRID) { bgCtx.beginPath(); bgCtx.moveTo(x, 0); bgCtx.lineTo(x, HEIGHT); bgCtx.stroke(); }
   for (let y = 0; y <= HEIGHT; y += GRID) { bgCtx.beginPath(); bgCtx.moveTo(0, y); bgCtx.lineTo(WIDTH, y); bgCtx.stroke(); }
-}
-
-// Кнопка музыки (правый верхний угол)
-function drawMusicBtn() {
-  updateMusicBtn();
-  const r = BTN_MUSIC;
-  const hover = inRect(mouse, r);
-  ctx.fillStyle = hover ? C.btnHover : C.btn;
-  ctx.shadowColor = 'rgba(0,0,0,0.3)';
-  ctx.shadowBlur = 6;
-  rr(r.x, r.y, r.w, r.h, 10); ctx.fill();
-  ctx.shadowBlur = 0;
-  const icon = musicEnabled ? '🔊' : '🔇';
-  ctx.font = '22px serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(icon, r.x + r.w / 2, r.y + r.h / 2 + 2);
 }

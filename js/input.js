@@ -1,17 +1,13 @@
 function handleTap(p) {
   ensureAudio();
 
-  // Кнопка музыки
-  if (inRect(p, BTN_MUSIC)) {
-    toggleMusic();
-    return;
-  }
-
   if (state === 'menu') {
     if (inRect(p, BTN_PROFILE)) { openProfileDialog(); SFX.click(); return; }
+    if (inRect(p, BTN_GIFT)) { openDaily(); return; }
+    if (inRect(p, BTN_SETTINGS)) { openSettings(); return; }
     if (inRect(p, BTN_MENU_1)) { startGame('classic'); return; }
     if (inRect(p, BTN_MENU_2)) { startGame('hard'); return; }
-    if (inRect(p, BTN_MENU_3)) { startGame('level'); return; }
+    if (inRect(p, BTN_MENU_3)) { state = 'levels'; SFX.click(); return; }
     if (inRect(p, BTN_SHOP)) { shopScroll = 0; state = 'shop'; SFX.click(); return; }
     if (inRect(p, STAT_WEEK)) { recTab = 'week'; state = 'records'; SFX.click(); return; }
     if (inRect(p, STAT_REC))  { recTab = 'record'; state = 'records'; SFX.click(); return; }
@@ -47,20 +43,69 @@ function handleTap(p) {
     if (inRect(p, TAB_WEEK)) { recTab = 'week'; SFX.click(); }
     else if (inRect(p, TAB_REC)) { recTab = 'record'; SFX.click(); }
     else if (inRect(p, TAB_LEAD)) { recTab = 'leaders'; SFX.click(); }
+  } else if (state === 'levels') {
+    if (inRect(p, BTN_BACK)) { state = 'menu'; SFX.click(); return; }
+    for (let i = 0; i < DIFF_TABS.length; i++) {
+      if (inRect(p, DIFF_TABS[i])) {
+        const d = LEVEL_DIFFS[i];
+        if (diffUnlocked(d.id)) { lvlDiff = d.id; SFX.click(); }
+        else SFX.error();
+        return;
+      }
+    }
+    for (const cell of LEVEL_CELLS) {
+      if (inRect(p, cell)) {
+        if (levelUnlocked(lvlDiff, cell.idx)) startLevel(lvlDiff, cell.idx);
+        else SFX.error();
+        return;
+      }
+    }
   } else if (state === 'play') {
     if (quickPaused) resumeGame();
   } else if (state === 'pausemenu') {
     if (inRect(p, BTN_CONT)) resumeGame();
-    else if (inRect(p, BTN_RESTART)) { commitScore(); startGame(mode); }
-    else if (inRect(p, BTN_MENU_BTN)) { commitScore(); state = 'menu'; startMusic('menu'); SFX.click(); }
+    else if (inRect(p, BTN_RESTART)) { commitScore(); mode === 'level' ? startLevel(lvlDiff, lvlIndex) : startGame(mode); }
+    else if (inRect(p, BTN_MENU_BTN)) {
+      commitScore();
+      state = mode === 'level' ? 'levels' : 'menu';
+      startMusic('menu');
+      SFX.click();
+    }
+  } else if (state === 'levelwin') {
+    if (inRect(p, BTN_LW_NEXT)) {
+      if (lvlIndex < LEVELS_PER_DIFF) startLevel(lvlDiff, lvlIndex + 1);
+      else { state = 'levels'; SFX.click(); }
+      return;
+    }
+    if (inRect(p, BTN_LW_RETRY)) { startLevel(lvlDiff, lvlIndex); return; }
+    if (inRect(p, BTN_LW_LIST)) { state = 'levels'; startMusic('menu'); SFX.click(); return; }
   } else if (state === 'gameover') {
-    if (inRect(p, BTN_GO_RESTART)) startGame(mode);
-    else if (inRect(p, BTN_GO_MENU)) { state = 'menu'; startMusic('menu'); SFX.click(); }
+    if (inRect(p, BTN_GO_RESTART)) {
+      mode === 'level' ? startLevel(lvlDiff, lvlIndex) : startGame(mode);
+      return;
+    }
+    if (inRect(p, BTN_GO_MENU)) {
+      state = mode === 'level' ? 'levels' : 'menu';
+      startMusic('menu');
+      SFX.click();
+    }
   }
+}
+
+function isMenuLikeState() {
+  return state === 'menu' || state === 'shop' || state === 'records' || state === 'levels';
 }
 
 function setupInput() {
   window.addEventListener('keydown', (e) => {
+    if (dailyOpen) {
+      if (e.code === 'Escape') closeDaily();
+      return;
+    }
+    if (settingsOpen) {
+      if (e.code === 'Escape') closeSettings();
+      return;
+    }
     if (fundsOpen) {
       if (e.code === 'Escape' || e.code === 'Enter' || e.code === 'Space') closeFunds();
       return;
@@ -75,7 +120,7 @@ function setupInput() {
     }
     if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
     const c = e.code;
-    if (state === 'shop' || state === 'records') {
+    if (state === 'shop' || state === 'records' || state === 'levels') {
       if (c === 'Escape') { state = 'menu'; SFX.click(); }
       return;
     }
@@ -93,8 +138,15 @@ function setupInput() {
       else if (c === 'ArrowRight' || c === 'KeyD') queueDir({ x: GRID, y: 0 });
     } else if (state === 'pausemenu') {
       if (c === 'Escape' || c === 'KeyP' || c === 'Space') resumeGame();
+    } else if (state === 'levelwin') {
+      if (c === 'Enter' || c === 'Space') {
+        if (lvlIndex < LEVELS_PER_DIFF) startLevel(lvlDiff, lvlIndex + 1);
+        else { state = 'levels'; SFX.click(); }
+      }
     } else if (state === 'gameover') {
-      if (c === 'Enter' || c === 'Space') startGame(mode);
+      if (c === 'Enter' || c === 'Space') {
+        mode === 'level' ? startLevel(lvlDiff, lvlIndex) : startGame(mode);
+      }
     }
   });
 
@@ -198,10 +250,30 @@ function setupInput() {
     ensureAudio();
     doConfirmPurchase();
   });
-  document.getElementById('confirmCancel').addEventListener('click', () => {
-    closeConfirm();
-  });
+  document.getElementById('confirmCancel').addEventListener('click', () => closeConfirm());
 
   // Недостаточно средств
   document.getElementById('fundsOk').addEventListener('click', () => closeFunds());
+
+  // Настройки
+  document.getElementById('settingsClose').addEventListener('click', () => closeSettings());
+  musicVolEl.addEventListener('input', () => {
+    musicVolume = parseInt(musicVolEl.value, 10) / 100;
+    musicVolValEl.textContent = musicVolEl.value;
+    saveVolumes();
+    if (musicVolume <= 0.01) stopMusic();
+    else if (!currentMusicMode) startMusic(isMenuLikeState() ? 'menu' : 'game');
+  });
+  sfxVolEl.addEventListener('input', () => {
+    sfxVolume = parseInt(sfxVolEl.value, 10) / 100;
+    sfxVolValEl.textContent = sfxVolEl.value;
+    saveVolumes();
+  });
+
+  // Ежедневные награды
+  document.getElementById('dailyClaim').addEventListener('click', () => {
+    ensureAudio();
+    claimDaily();
+  });
+  document.getElementById('dailyClose').addEventListener('click', () => closeDaily());
 }

@@ -1,28 +1,52 @@
-function buildWalls(lvl) {
+// ============================================
+// ГЕНЕРАЦИЯ СТЕН ДЛЯ УРОВНЕЙ (42 уникальных)
+// ============================================
+function buildLevelWalls(diffId, idx) {
+  const di = diffIndex(diffId);
+  const rnd = mulberry32(di * 1000 + idx * 77 + 5);
+  const occ = new Set();
   const cells = [];
-  const add = (x, y) => cells.push({ x: x * GRID, y: y * GRID });
-  const p = (lvl - 1) % 5;
-  if (p === 1) {
-    for (let x = 10; x <= 19; x++) { add(x, 14); add(x, 15); }
-  } else if (p === 2) {
-    for (let y = 6; y <= 23; y++) { add(8, y); add(21, y); }
-  } else if (p === 3) {
-    for (let x = 4; x <= 7; x++) for (let y = 4; y <= 7; y++) add(x, y);
-    for (let x = 22; x <= 25; x++) for (let y = 4; y <= 7; y++) add(x, y);
-    for (let x = 4; x <= 7; x++) for (let y = 22; y <= 25; y++) add(x, y);
-    for (let x = 22; x <= 25; x++) for (let y = 22; y <= 25; y++) add(x, y);
-  } else if (p === 4) {
-    for (let x = 6; x <= 12; x++) { add(x, 8); add(x, 21); }
-    for (let x = 17; x <= 23; x++) { add(x, 8); add(x, 21); }
+  const add = (x, y) => {
+    if (x < 1 || y < 1 || x >= COLS - 1 || y >= ROWS - 1) return;
+    if (Math.abs(x - 15) < 3 && Math.abs(y - 15) < 3) return; // зона спавна свободна
+    const k = x + ',' + y;
+    if (occ.has(k)) return;
+    occ.add(k);
+    cells.push({ x: x * GRID, y: y * GRID });
+  };
+
+  const structs = 2 + Math.floor(idx / 4) + di * 2;
+  for (let s = 0; s < structs; s++) {
+    const type = Math.floor(rnd() * 4);
+    const cx = 3 + Math.floor(rnd() * (COLS - 6));
+    const cy = 3 + Math.floor(rnd() * (ROWS - 6));
+    const len = 3 + Math.floor(rnd() * (3 + di * 2 + Math.floor(idx / 5)));
+    if (type === 0) { for (let i = 0; i < len; i++) add(cx + i, cy); }
+    else if (type === 1) { for (let i = 0; i < len; i++) add(cx, cy + i); }
+    else if (type === 2) {
+      const sz = 2 + (di > 0 && rnd() < 0.5 ? 1 : 0);
+      for (let x = 0; x < sz; x++) for (let y = 0; y < sz; y++) add(cx + x, cy + y);
+    } else {
+      add(cx, cy); add(cx + 1, cy); add(cx, cy + 1); add(cx - 1, cy); add(cx, cy - 1);
+    }
+  }
+  if (di === 2) {
+    const n = 4 + idx;
+    for (let i = 0; i < n; i++) add(2 + Math.floor(rnd() * (COLS - 4)), 2 + Math.floor(rnd() * (ROWS - 4)));
   }
   return cells;
 }
 
-function rebuildWalls() {
-  walls = buildWalls(level).filter(c => !snake.some(s => s.x === c.x && s.y === c.y));
-  wallsSet = new Set(walls.map(c => wallKey(c.x, c.y)));
-  if (wallsSet.has(wallKey(food.x, food.y))) spawnFood();
-  if (boost && wallsSet.has(wallKey(boost.x, boost.y))) { boost = null; boostCooldown = randInt(7000, 15000); }
+function randomFreeCell() {
+  for (let i = 0; i < 200; i++) {
+    const p = { x: randInt(0, COLS - 1) * GRID, y: randInt(0, ROWS - 1) * GRID };
+    if (!snake.some(s => s.x === p.x && s.y === p.y) &&
+        !(p.x === food.x && p.y === food.y) &&
+        !wallsSet.has(wallKey(p.x, p.y)) &&
+        !(door && p.x === door.x && p.y === door.y) &&
+        !(banana && p.x === banana.x && p.y === banana.y)) return p;
+  }
+  return null;
 }
 
 function spawnFood() {
@@ -32,12 +56,15 @@ function spawnFood() {
   }
 }
 
-function commitScore() {
+function commitScore(withCoins = true) {
   if (score > high) { high = score; saveHigh(high); }
   logScore(score, mode);
-  coins += coinsFromScore(score); saveCoins();
+  if (withCoins) { coins += coinsFromScore(score); saveCoins(); }
 }
 
+// ============================================
+// СТАРТ РЕЖИМОВ
+// ============================================
 function startGame(m) {
   ensureAudio();
   SFX.start();
@@ -47,10 +74,42 @@ function startGame(m) {
   dir = { x: 0, y: -GRID };
   dirQueue = [];
   growPending = false;
-  level = 1; applesInLevel = 0; lastLevelUp = 0;
   walls = []; wallsSet = new Set();
+  door = null;
   spawnFood();
   boost = null; boostCooldown = randInt(7000, 15000);
+  banana = null; bananaCooldown = randInt(9000, 16000);
+  yellowUntil = 0;
+  score = 0; quickPaused = false; pausedAccum = 0;
+  particles = [];
+  state = 'countdown';
+  countdownStart = performance.now();
+  calcBtns();
+  startMusic('game');
+}
+
+function startLevel(diffId, idx) {
+  ensureAudio();
+  SFX.start();
+  mode = 'level';
+  lvlDiff = diffId;
+  lvlIndex = idx;
+  const d = LEVEL_DIFFS[diffIndex(diffId)];
+  gameSpeed = d.baseSpeed;
+  applesNeed = d.apples(idx);
+  applesEaten = 0;
+  lives = 3;
+  door = null;
+  snake = [{ x: Math.floor(COLS / 2) * GRID, y: Math.floor(ROWS / 2) * GRID }];
+  dir = { x: 0, y: -GRID };
+  dirQueue = [];
+  growPending = false;
+  walls = buildLevelWalls(diffId, idx);
+  wallsSet = new Set(walls.map(c => wallKey(c.x, c.y)));
+  spawnFood();
+  boost = null; boostCooldown = randInt(7000, 15000);
+  banana = null; bananaCooldown = randInt(9000, 16000);
+  yellowUntil = 0;
   score = 0; quickPaused = false; pausedAccum = 0;
   particles = [];
   state = 'countdown';
@@ -79,19 +138,103 @@ function resumeGame() {
   SFX.click();
 }
 
-function stepSnake() {
+// ============================================
+// ЖИЗНИ / ДВЕРЬ / ПОБЕДА
+// ============================================
+function loseLife(now, resetSnake) {
+  lives--;
+  SFX.hit();
+  if (lives <= 0) {
+    commitScore(false);
+    frozenSec = elapsedSec(now);
+    state = 'gameover';
+    SFX.die();
+    startMusic('menu');
+    return;
+  }
+  if (resetSnake) {
+    snake = [{ x: Math.floor(COLS / 2) * GRID, y: Math.floor(ROWS / 2) * GRID }];
+    dir = { x: 0, y: -GRID };
+    dirQueue = [];
+    growPending = false;
+  }
+}
+
+function completeLevel(now) {
+  const sec = elapsedSec(now);
+  const key = levelKey(lvlDiff, lvlIndex);
+  const prevBest = levelTimes[key] || null;
+  const first = lvlIndex === levelProgress[lvlDiff] + 1;
+
+  let reward = 0;
+  if (first) {
+    levelProgress[lvlDiff] = lvlIndex;
+    saveLevelProgress();
+    maxLevel = levelProgress.easy + levelProgress.medium + levelProgress.hard;
+    reward = LEVEL_REWARD;
+  } else if (prevBest === null || sec < prevBest) {
+    reward = LEVEL_REWARD;
+  }
+
+  let newBest = false;
+  if (prevBest === null || sec < prevBest) {
+    levelTimes[key] = sec;
+    saveLevelTimes();
+    newBest = true;
+  }
+
+  if (reward > 0) { coins += reward; saveCoins(); }
+  lastLevelResult = { time: sec, reward: reward, newBest: newBest, first: first };
+  frozenSec = sec;
+  state = 'levelwin';
+  SFX.levelUp();
+  setTimeout(() => SFX.unlock(), 300);
+  startMusic('menu');
+}
+
+// ============================================
+// ШАГ ЗМЕЙКИ
+// ============================================
+function stepSnake(now) {
   if (dirQueue.length) dir = dirQueue.shift();
   const h = snake[0];
   const nx = (h.x + dir.x + WIDTH) % WIDTH;
   const ny = (h.y + dir.y + HEIGHT) % HEIGHT;
+
+  if (mode === 'level') {
+    // Стена ломается, минус жизнь
+    if (wallsSet.has(wallKey(nx, ny))) {
+      wallsSet.delete(wallKey(nx, ny));
+      walls = walls.filter(w => !(w.x === nx && w.y === ny));
+      spawnParticles(nx, ny, C.wall, 12);
+      loseLife(now, false);
+      return true;
+    }
+    const body = growPending ? snake.slice(1) : snake.slice(1, -1);
+    if (body.some(p => p.x === nx && p.y === ny)) {
+      loseLife(now, true);
+      return true;
+    }
+    snake.unshift({ x: nx, y: ny });
+    if (!growPending) snake.pop(); else growPending = false;
+    if (door && nx === door.x && ny === door.y) {
+      completeLevel(now);
+    }
+    return true;
+  }
+
+  // classic / hard
   if (wallsSet.has(wallKey(nx, ny))) return false;
-  const body = growPending ? snake.slice(1) : snake.slice(1, -1);
-  if (body.some(p => p.x === nx && p.y === ny)) return false;
+  const body2 = growPending ? snake.slice(1) : snake.slice(1, -1);
+  if (body2.some(p => p.x === nx && p.y === ny)) return false;
   snake.unshift({ x: nx, y: ny });
   if (!growPending) snake.pop(); else growPending = false;
   return true;
 }
 
+// ============================================
+// ЧАСТИЦЫ / МЕНЮ
+// ============================================
 function initMenuParts() {
   menuParts = [];
   const cols = ['#facc15', '#4ade80', '#e2e8f0', '#38bdf8'];
@@ -141,6 +284,9 @@ function updateParticles(dt) {
   }
 }
 
+// ============================================
+// ГЛАВНЫЙ UPDATE
+// ============================================
 function update(now, dt) {
   updateParticles(dt);
   if (state === 'menu') updateMenuParts(dt);
@@ -151,63 +297,74 @@ function update(now, dt) {
   }
 
   if (state === 'play' && !quickPaused) {
+    // Буст-звезда
     if (!boost) {
       boostCooldown -= dt;
       if (boostCooldown <= 0) {
-        while (true) {
-          const p = { x: randInt(0, COLS - 1) * GRID, y: randInt(0, ROWS - 1) * GRID };
-          if (!snake.some(s => s.x === p.x && s.y === p.y) &&
-              !(p.x === food.x && p.y === food.y) &&
-              !wallsSet.has(wallKey(p.x, p.y))) { boost = p; break; }
-        }
-        boostTimer = 6000;
+        const p = randomFreeCell();
+        if (p) { boost = p; boostTimer = 6000; }
       }
     } else {
       boostTimer -= dt;
       if (boostTimer <= 0) { boost = null; boostCooldown = randInt(7000, 15000); }
     }
+    // Банан
+    if (!banana) {
+      bananaCooldown -= dt;
+      if (bananaCooldown <= 0) {
+        const p = randomFreeCell();
+        if (p) { banana = p; bananaTimer = BANANA_LIFE; }
+      }
+    } else {
+      bananaTimer -= dt;
+      if (bananaTimer <= 0) { banana = null; bananaCooldown = randInt(9000, 16000); }
+    }
 
     const interval = 1000 / gameSpeed;
     if (now - lastStep >= interval) {
       lastStep = now - ((now - lastStep) % interval);
-      if (!stepSnake()) {
-        commitScore();
+      const alive = stepSnake(now);
+      if (!alive) {
+        commitScore(true);
         frozenSec = elapsedSec(now);
         state = 'gameover';
         SFX.die();
         startMusic('menu');
-        if (mode === 'level') {
-          const achieved = level;
-          if (achieved > maxLevel) {
-            const oldFrame = FRAMES.filter(f => f.level <= maxLevel).reduce((a,b) => a.level > b.level ? a : b, FRAMES[0]);
-            const newFrame = FRAMES.filter(f => f.level <= achieved).reduce((a,b) => a.level > b.level ? a : b, FRAMES[0]);
-            if (newFrame.level > oldFrame.level) {
-              setTimeout(() => SFX.unlock(), 500);
-            }
-            maxLevel = achieved;
-            saveMaxLevel();
-          }
-        }
-      } else {
+      } else if (state === 'play') {
         const h = snake[0];
+        // Яблоко
         if (h.x === food.x && h.y === food.y) {
-          score += appleScore(elapsedSec(now));
-          growPending = true;
-          spawnParticles(food.x, food.y, C.apple, 15);
-          spawnFood();
-          SFX.eat();
           if (mode === 'level') {
-            applesInLevel++;
-            if (applesInLevel >= APPLES_PER_LEVEL) {
-              applesInLevel = 0;
-              level++;
-              gameSpeed = Math.min(10 + (level - 1) * 2, 20);
-              rebuildWalls();
-              lastLevelUp = now;
-              SFX.levelUp();
+            score += 10;
+            applesEaten++;
+            growPending = true;
+            const d = LEVEL_DIFFS[diffIndex(lvlDiff)];
+            gameSpeed = Math.min(gameSpeed + d.speedUp, d.baseSpeed + 6);
+            spawnParticles(food.x, food.y, C.apple, 15);
+            SFX.eat();
+            spawnFood();
+            if (applesEaten >= applesNeed && !door) {
+              door = randomFreeCell();
+              SFX.bonus();
             }
+          } else {
+            score += appleScore(elapsedSec(now));
+            growPending = true;
+            spawnParticles(food.x, food.y, C.apple, 15);
+            spawnFood();
+            SFX.eat();
           }
         }
+        // Банан
+        if (banana && h.x === banana.x && h.y === banana.y) {
+          score += BANANA_POINTS;
+          yellowUntil = now + BANANA_YELLOW_MS;
+          spawnParticles(banana.x, banana.y, C.banana, 20);
+          banana = null;
+          bananaCooldown = randInt(9000, 16000);
+          SFX.banana();
+        }
+        // Звезда
         if (boost && h.x === boost.x && h.y === boost.y) {
           score += 3; growPending = true;
           spawnParticles(boost.x, boost.y, C.boost, 20);

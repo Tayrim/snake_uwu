@@ -47,12 +47,35 @@ function loadAvatarId() {
 }
 function saveAvatarId() { try { localStorage.setItem('snake_avatar', avatarId); } catch (e) {} }
 
-function loadMaxLevel() {
-  try { return parseInt(localStorage.getItem('snake_maxlvl') || '0', 10) || 0; }
-  catch (e) { return 0; }
+// --- ПРОГРЕСС УРОВНЕЙ ---
+function loadLevelProgress() {
+  const p = loadJSON('snake_lvlprog', null);
+  if (p && typeof p === 'object') {
+    return {
+      easy: parseInt(p.easy || 0, 10) || 0,
+      medium: parseInt(p.medium || 0, 10) || 0,
+      hard: parseInt(p.hard || 0, 10) || 0
+    };
+  }
+  return { easy: 0, medium: 0, hard: 0 };
 }
-function saveMaxLevel() { try { localStorage.setItem('snake_maxlvl', String(maxLevel)); } catch (e) {} }
+function saveLevelProgress() { saveJSON('snake_lvlprog', levelProgress); }
 
+function loadLevelTimes() {
+  const t = loadJSON('snake_lvltimes', null);
+  return (t && typeof t === 'object') ? t : {};
+}
+function saveLevelTimes() { saveJSON('snake_lvltimes', levelTimes); }
+
+// --- ЕЖЕДНЕВНЫЕ НАГРАДЫ ---
+function loadDaily() {
+  const d = loadJSON('snake_daily', null);
+  if (d && typeof d === 'object') return { last: d.last || '', day: parseInt(d.day || 0, 10) || 0 };
+  return { last: '', day: 0 };
+}
+function saveDaily(d) { saveJSON('snake_daily', d); }
+
+// --- РЕКОРДЫ ---
 function loadScores() {
   const a = loadJSON('snake_scores', []);
   if (!Array.isArray(a)) return [];
@@ -84,9 +107,15 @@ function initStorage() {
   ownedAvatars = loadOwnedAvatars();
   avatarId = loadAvatarId();
   if (!ownedAvatars.includes(avatarId)) avatarId = 'snake';
-  maxLevel = loadMaxLevel();
   high = loadHigh();
   nick = loadNick();
+
+  levelProgress = loadLevelProgress();
+  levelTimes = loadLevelTimes();
+  maxLevel = levelProgress.easy + levelProgress.medium + levelProgress.hard;
+
   boostCooldown = randInt(7000, 15000);
-  loadMusicState();
+  bananaCooldown = randInt(9000, 16000);
+
+  loadVolumes();
 }
