@@ -1,5 +1,5 @@
 // ============================================
-// ГЕНЕРАЦИЯ СТЕН ДЛЯ УРОВНЕЙ (42 уникальных)
+// ГЕНЕРАЦИЯ СТЕН ДЛЯ УРОВНЕЙ
 // ============================================
 function buildLevelWalls(diffId, idx) {
   const di = diffIndex(diffId);
@@ -8,7 +8,7 @@ function buildLevelWalls(diffId, idx) {
   const cells = [];
   const add = (x, y) => {
     if (x < 1 || y < 1 || x >= COLS - 1 || y >= ROWS - 1) return;
-    if (Math.abs(x - 15) < 3 && Math.abs(y - 15) < 3) return; // зона спавна свободна
+    if (Math.abs(x - 15) < 3 && Math.abs(y - 15) < 3) return;
     const k = x + ',' + y;
     if (occ.has(k)) return;
     occ.add(k);
@@ -44,7 +44,8 @@ function randomFreeCell() {
         !(p.x === food.x && p.y === food.y) &&
         !wallsSet.has(wallKey(p.x, p.y)) &&
         !(door && p.x === door.x && p.y === door.y) &&
-        !(banana && p.x === banana.x && p.y === banana.y)) return p;
+        !(banana && p.x === banana.x && p.y === banana.y) &&
+        !(poison && p.x === poison.x && p.y === poison.y)) return p;
   }
   return null;
 }
@@ -59,7 +60,7 @@ function spawnFood() {
 function commitScore(withCoins = true) {
   if (score > high) { high = score; saveHigh(high); }
   logScore(score, mode);
-  if (withCoins) { coins += coinsFromScore(score); saveCoins(); }
+  if (withCoins) addCoins(coinsFromScore(score));
 }
 
 // ============================================
@@ -79,6 +80,8 @@ function startGame(m) {
   spawnFood();
   boost = null; boostCooldown = randInt(7000, 15000);
   banana = null; bananaCooldown = randInt(9000, 16000);
+  poison = null; poisonCooldown = randInt(6000, 12000);
+  invertedUntil = 0;
   yellowUntil = 0;
   score = 0; quickPaused = false; pausedAccum = 0;
   particles = [];
@@ -109,6 +112,8 @@ function startLevel(diffId, idx) {
   spawnFood();
   boost = null; boostCooldown = randInt(7000, 15000);
   banana = null; bananaCooldown = randInt(9000, 16000);
+  poison = null; poisonCooldown = randInt(6000, 12000);
+  invertedUntil = 0;
   yellowUntil = 0;
   score = 0; quickPaused = false; pausedAccum = 0;
   particles = [];
@@ -141,15 +146,20 @@ function resumeGame() {
 // ============================================
 // ЖИЗНИ / ДВЕРЬ / ПОБЕДА
 // ============================================
+function failLevel(now) {
+  lives = 0;
+  commitScore(false);
+  frozenSec = elapsedSec(now);
+  state = 'gameover';
+  SFX.die();
+  startMusic('menu');
+}
+
 function loseLife(now, resetSnake) {
   lives--;
   SFX.hit();
   if (lives <= 0) {
-    commitScore(false);
-    frozenSec = elapsedSec(now);
-    state = 'gameover';
-    SFX.die();
-    startMusic('menu');
+    failLevel(now);
     return;
   }
   if (resetSnake) {
@@ -166,14 +176,26 @@ function completeLevel(now) {
   const prevBest = levelTimes[key] || null;
   const first = lvlIndex === levelProgress[lvlDiff] + 1;
 
-  let reward = 0;
+  let base = 0;
+  let granted = null;
+
   if (first) {
     levelProgress[lvlDiff] = lvlIndex;
     saveLevelProgress();
     maxLevel = levelProgress.easy + levelProgress.medium + levelProgress.hard;
-    reward = LEVEL_REWARD;
+    base = LEVEL_REWARD + score; // 150 + собранные очки
+    // Полосатый скин за полное прохождение сложности
+    if (lvlIndex === LEVELS_PER_DIFF) {
+      const sk = SKINS.find(s => s.reward === lvlDiff);
+      if (sk && !ownedSkins.includes(sk.id)) {
+        ownedSkins.push(sk.id);
+        saveOwnedSkins();
+        granted = sk.name;
+        setTimeout(() => SFX.unlock(), 600);
+      }
+    }
   } else if (prevBest === null || sec < prevBest) {
-    reward = LEVEL_REWARD;
+    base = LEVEL_REWARD + score;
   }
 
   let newBest = false;
@@ -183,26 +205,28 @@ function completeLevel(now) {
     newBest = true;
   }
 
-  if (reward > 0) { coins += reward; saveCoins(); }
-  lastLevelResult = { time: sec, reward: reward, newBest: newBest, first: first };
+  const reward = base > 0 ? addCoins(base) : 0;
+  lastLevelResult = { time: sec, reward: reward, base: base, newBest: newBest, first: first, granted: granted };
   frozenSec = sec;
   state = 'levelwin';
   SFX.levelUp();
-  setTimeout(() => SFX.unlock(), 300);
   startMusic('menu');
 }
 
 // ============================================
-// ШАГ ЗМЕЙКИ
+// ШАГ ЗМЕЙКИ (с учётом отравления)
 // ============================================
 function stepSnake(now) {
-  if (dirQueue.length) dir = dirQueue.shift();
+  if (dirQueue.length) {
+    let d = dirQueue.shift();
+    if (invertedUntil > performance.now()) d = { x: -d.x, y: -d.y }; // перепутанное управление
+    dir = d;
+  }
   const h = snake[0];
   const nx = (h.x + dir.x + WIDTH) % WIDTH;
   const ny = (h.y + dir.y + HEIGHT) % HEIGHT;
 
   if (mode === 'level') {
-    // Стена ломается, минус жизнь
     if (wallsSet.has(wallKey(nx, ny))) {
       wallsSet.delete(wallKey(nx, ny));
       walls = walls.filter(w => !(w.x === nx && w.y === ny));
@@ -223,7 +247,6 @@ function stepSnake(now) {
     return true;
   }
 
-  // classic / hard
   if (wallsSet.has(wallKey(nx, ny))) return false;
   const body2 = growPending ? snake.slice(1) : snake.slice(1, -1);
   if (body2.some(p => p.x === nx && p.y === ny)) return false;
@@ -319,6 +342,19 @@ function update(now, dt) {
       bananaTimer -= dt;
       if (bananaTimer <= 0) { banana = null; bananaCooldown = randInt(9000, 16000); }
     }
+    // Отравленное яблоко (только в уровнях)
+    if (mode === 'level') {
+      if (!poison) {
+        poisonCooldown -= dt;
+        if (poisonCooldown <= 0) {
+          const p = randomFreeCell();
+          if (p) { poison = p; poisonTimer = POISON_LIFE; }
+        }
+      } else {
+        poisonTimer -= dt;
+        if (poisonTimer <= 0) { poison = null; poisonCooldown = randInt(6000, 12000); }
+      }
+    }
 
     const interval = 1000 / gameSpeed;
     if (now - lastStep >= interval) {
@@ -335,8 +371,13 @@ function update(now, dt) {
         // Яблоко
         if (h.x === food.x && h.y === food.y) {
           if (mode === 'level') {
-            score += 10;
             applesEaten++;
+            if (applesEaten > applesNeed) {
+              // Съел лишнее яблоко — проигрыш
+              failLevel(now);
+              return;
+            }
+            score += 10;
             growPending = true;
             const d = LEVEL_DIFFS[diffIndex(lvlDiff)];
             gameSpeed = Math.min(gameSpeed + d.speedUp, d.baseSpeed + 6);
@@ -363,6 +404,14 @@ function update(now, dt) {
           banana = null;
           bananaCooldown = randInt(9000, 16000);
           SFX.banana();
+        }
+        // Отравленное яблоко
+        if (poison && h.x === poison.x && h.y === poison.y) {
+          invertedUntil = now + POISON_INVERT_MS;
+          spawnParticles(poison.x, poison.y, C.poison, 20);
+          poison = null;
+          poisonCooldown = randInt(6000, 12000);
+          SFX.error();
         }
         // Звезда
         if (boost && h.x === boost.x && h.y === boost.y) {

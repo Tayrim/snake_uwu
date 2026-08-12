@@ -3,7 +3,6 @@ const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const wallKey = (x, y) => x + ',' + y;
 
-// Сид-рандом для генерации уровней
 function mulberry32(a) {
   return function() {
     a |= 0; a = a + 0x6D2B79F5 | 0;
@@ -70,7 +69,11 @@ function multText(sec) {
 function currentSkin() { return SKINS.find(s => s.id === skinId) || SKINS[0]; }
 function currentTheme() { return THEMES.find(t => t.id === themeId) || THEMES[0]; }
 function currentAvatar() { return AVATARS.find(a => a.id === avatarId) || AVATARS[0]; }
+
+// Рамка: выбранная игроком, если разблокирована, иначе лучшая
 function currentFrame() {
+  const sel = FRAMES.find(f => f.id === frameId);
+  if (sel && sel.level <= maxLevel) return sel;
   let best = FRAMES[0];
   for (const f of FRAMES) {
     if (f.level <= maxLevel && f.level >= best.level) best = f;
@@ -78,8 +81,20 @@ function currentFrame() {
   return best;
 }
 
+// Множитель монет от скина
+function currentSkinMult() { return currentSkin().mult || 1; }
+
+// Начисление монет с учётом множителя скина
+function addCoins(n) {
+  const v = Math.round(n * currentSkinMult());
+  coins += v;
+  saveCoins();
+  return v;
+}
+
 function segColor(sk, i, now) {
-  if (yellowUntil > now) return C.banana; // банановый эффект
+  if (yellowUntil > now) return C.banana;
+  if (sk.striped) return i % 2 ? sk.stripe : sk.body; // полосатые скины
   if (sk.rainbow) return 'hsl(' + Math.floor((i * 12 + now / 10) % 360) + ',85%,55%)';
   return sk.body;
 }

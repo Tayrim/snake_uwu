@@ -1,11 +1,14 @@
 // ============================================
-// МАГАЗИН (с ползунком скролла и большими отступами)
+// МАГАЗИН
 // ============================================
 function drawShop() {
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, WIDTH, HEIGHT);
   drawBtn(BTN_BACK, 'Назад', 18);
   text('МАГАЗИН', WIDTH / 2, 35, 40, C.accent, 'center');
   text('Монеты: ' + coins, WIDTH / 2, 88, 22, C.gold, 'center');
+  if (currentSkinMult() > 1) {
+    text('Множитель скина: x' + currentSkinMult(), WIDTH / 2, 116, 14, C.ok, 'center');
+  }
 
   drawTab(TAB_SHOP_SKINS, 'Скины', shopTab === 'skins');
   drawTab(TAB_SHOP_BG, 'Фоны', shopTab === 'bg');
@@ -35,23 +38,22 @@ function drawShop() {
     if (y + rowH > viewY && y < viewY + viewH) {
       if (shopTab === 'frames') {
         const unlocked = item.level <= maxLevel;
-        ctx.fillStyle = unlocked ? '#1e293b' : '#0f172a';
+        const selF = frameId === item.id;
+        ctx.fillStyle = selF ? '#334155' : (unlocked ? '#1e293b' : '#0f172a');
         ctx.globalAlpha = unlocked ? 1 : 0.45;
         rr(rect.x, rect.y, rect.w, rect.h, 10); ctx.fill();
+        if (selF) { ctx.strokeStyle = C.gold; ctx.lineWidth = 2; rr(rect.x, rect.y, rect.w, rect.h, 10); ctx.stroke(); }
 
         const px = rect.x + 28, py = rect.y + rowH / 2;
         drawAvatarFrame(px, py, 16, item, performance.now());
         ctx.fillStyle = '#0f172a';
         circle(px, py, 13);
 
-        text(item.name, rect.x + 56, rect.y + 14, 20, C.text);
-        text('Разблок. на уровне ' + item.level, rect.x + 56, rect.y + 38, 13, unlocked ? C.ok : C.gray);
+        text(item.name, rect.x + 56, rect.y + 21, 20, C.text);
 
-        if (unlocked) {
-          text('✓ получена', rect.x + rect.w - 14, rect.y + 22, 16, C.ok, 'right');
-        } else {
-          text('🔒', rect.x + rect.w - 14, rect.y + 22, 18, C.gray, 'right');
-        }
+        if (selF) text('Выбрано', rect.x + rect.w - 14, rect.y + 22, 16, C.ok, 'right');
+        else if (unlocked) text('Выбрать', rect.x + rect.w - 14, rect.y + 22, 16, C.text, 'right');
+        else text('🔒 ур. ' + item.level, rect.x + rect.w - 14, rect.y + 22, 14, C.gray, 'right');
         ctx.globalAlpha = 1;
       } else {
         const owned = (shopTab === 'skins' ? ownedSkins : ownedThemes).includes(item.id);
@@ -67,6 +69,11 @@ function drawShop() {
             ? 'hsl(' + Math.floor((performance.now() / 10) % 360) + ',85%,55%)'
             : item.body;
           rr(rect.x + 14, rect.y + 18, 28, 28, 6); ctx.fill();
+          if (item.striped) {
+            ctx.fillStyle = item.stripe;
+            ctx.fillRect(rect.x + 14, rect.y + 26, 28, 5);
+            ctx.fillRect(rect.x + 14, rect.y + 36, 28, 5);
+          }
         } else {
           ctx.fillStyle = item.bg;
           rr(rect.x + 14, rect.y + 18, 28, 28, 4); ctx.fill();
@@ -79,10 +86,17 @@ function drawShop() {
           ctx.stroke();
         }
 
-        text(item.name, rect.x + 56, rect.y + 21, 20, C.text);
+        text(item.name, rect.x + 56, rect.y + (item.mult ? 12 : 21), 20, C.text);
+        if (item.mult) {
+          text('x' + item.mult + ' ко всем монетам', rect.x + 56, rect.y + 38, 12, C.gold);
+        }
 
         if (sel) text('Выбрано', rect.x + rect.w - 14, rect.y + 22, 16, C.ok, 'right');
         else if (owned) text('Выбрать', rect.x + rect.w - 14, rect.y + 22, 16, C.text, 'right');
+        else if (item.reward) {
+          const dn = LEVEL_DIFFS.find(d => d.id === item.reward);
+          text('🏆 ' + (dn ? dn.name : '') + ': все 14', rect.x + rect.w - 14, rect.y + 22, 13, C.gray, 'right');
+        }
         else text(item.price + ' монет', rect.x + rect.w - 14, rect.y + 22, 16, afford ? C.gold : C.gray, 'right');
       }
     }
@@ -90,7 +104,6 @@ function drawShop() {
   }
   ctx.restore();
 
-  // Ползунок скролла
   if (shopMaxScroll > 0) {
     const trackX = 586, trackW = 6, trackY = viewY, trackH = viewH;
     ctx.fillStyle = '#1e293b';
@@ -217,7 +230,6 @@ function draw(now) {
     text('ВЫБЕРИТЕ РЕЖИМ', WIDTH / 2, 130, 26, C.text, 'center');
     text('Классика, хардкор или уровни — выбери свой путь!', WIDTH / 2, 165, 16, C.gray, 'center');
 
-    // Левая колонка: подарок, магазин, настройки
     drawModeBtn(BTN_GIFT, 'Подарки', '🎁', '#9d174d', '#be185d', '#ec4899');
     if (dailyInfo().canClaim) {
       ctx.fillStyle = '#ef4444';
@@ -227,7 +239,6 @@ function draw(now) {
     drawModeBtn(BTN_SHOP, 'Магазин', '🛒', '#4c1d95', '#5b21b6', '#a855f7');
     drawModeBtn(BTN_SETTINGS, 'Настройки', '⚙️', '#334155', '#475569', '#94a3b8');
 
-    // Режимы в центре
     drawModeBtn(BTN_MENU_1, 'Classic', '🐍', '#166534', '#15803d', '#22c55e');
     drawModeBtn(BTN_MENU_2, 'Hard', '🔥', '#991b1b', '#b91c1c', '#ef4444');
     drawModeBtn(BTN_MENU_3, 'Level', '🧱', '#854d0e', '#a16207', '#facc15');
@@ -278,11 +289,12 @@ function draw(now) {
       drawBtn(BTN_MENU_BTN, mode === 'level' ? 'К уровням' : 'Меню');
     } else if (state === 'levelwin') {
       ctx.fillStyle = C.dim; ctx.fillRect(0, 0, WIDTH, HEIGHT);
-      text('УРОВЕНЬ ' + lvlIndex + ' ПРОЙДЕН!', WIDTH / 2, 130, 46, C.accent, 'center');
-      const r = lastLevelResult || { time: 0, reward: 0, newBest: false };
-      text('Время: ' + fmtTime(r.time), WIDTH / 2, 205, 26, C.text, 'center');
-      if (r.newBest) text('🏆 Новый рекорд времени!', WIDTH / 2, 240, 18, C.gold, 'center');
-      text(r.reward > 0 ? '+' + r.reward + ' монет' : 'Награда: пройди быстрее своего времени', WIDTH / 2, 268, 16, r.reward > 0 ? C.gold : C.gray, 'center');
+      text('УРОВЕНЬ ' + lvlIndex + ' ПРОЙДЕН!', WIDTH / 2, 120, 46, C.accent, 'center');
+      const r = lastLevelResult || { time: 0, reward: 0, newBest: false, granted: null };
+      text('Время: ' + fmtTime(r.time), WIDTH / 2, 190, 26, C.text, 'center');
+      if (r.newBest) text('🏆 Новый рекорд времени!', WIDTH / 2, 224, 18, C.gold, 'center');
+      text(r.reward > 0 ? '+' + r.reward + ' монет (150 + очки' + (currentSkinMult() > 1 ? ' × ' + currentSkinMult() : '') + ')' : 'Награда: пройди быстрее своего времени', WIDTH / 2, 250, 15, r.reward > 0 ? C.gold : C.gray, 'center');
+      if (r.granted) text('🎁 Получен скин: ' + r.granted + '!', WIDTH / 2, 276, 16, C.ok, 'center');
       drawBtn(BTN_LW_NEXT, lvlIndex < LEVELS_PER_DIFF ? 'Следующий' : 'Все уровни пройдены!', 20);
       drawBtn(BTN_LW_RETRY, 'Заново', 20);
       drawBtn(BTN_LW_LIST, 'К уровням', 20);
@@ -295,7 +307,7 @@ function draw(now) {
       if (mode === 'level') {
         text(extra + '❤️ не хватило', WIDTH / 2, 300, 16, C.gray, 'center');
       } else {
-        text(extra + '+' + coinsFromScore(score) + ' монет', WIDTH / 2, 300, 16, C.gray, 'center');
+        text(extra + '+' + Math.round(coinsFromScore(score) * currentSkinMult()) + ' монет', WIDTH / 2, 300, 16, C.gray, 'center');
       }
       drawBtn(BTN_GO_RESTART, 'Заново');
       drawBtn(BTN_GO_MENU, mode === 'level' ? 'К уровням' : 'Меню');
@@ -516,8 +528,7 @@ function buildDailyGrid() {
 function claimDaily() {
   const info = dailyInfo();
   if (!info.canClaim) { SFX.click(); return; }
-  coins += DAILY_REWARDS[info.next - 1];
-  saveCoins();
+  addCoins(DAILY_REWARDS[info.next - 1]);
   saveDaily({ last: todayStr(), day: info.next });
   SFX.buy();
   buildDailyGrid();

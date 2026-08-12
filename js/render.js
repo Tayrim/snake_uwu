@@ -48,6 +48,7 @@ function drawTab(r, label, active, locked) {
   ctx.globalAlpha = 1;
 }
 
+// Авто-размер шрифта, чтобы длинные надписи влезали аккуратно
 function drawModeBtn(r, label, icon, base, hoverCol, glow) {
   const hov = inRect(mouse, r);
   ctx.save();
@@ -62,8 +63,9 @@ function drawModeBtn(r, label, icon, base, hoverCol, glow) {
   ctx.shadowBlur = hov ? 20 : 8;
   rr(r.x, r.y, r.w, r.h, 12); ctx.fill();
   ctx.shadowBlur = 0;
-  emoji(icon, r.x + 14, r.y + (r.h - 26) / 2, 26);
-  text(label, r.x + 50 + (r.w - 50) / 2, r.y + (r.h - 24) / 2, 24, C.text, 'center');
+  const fs = label.length > 7 ? 19 : 24;
+  emoji(icon, r.x + 12, r.y + (r.h - 24) / 2, 24);
+  text(label, r.x + 44 + (r.w - 44) / 2, r.y + (r.h - fs) / 2, fs, C.text, 'center');
   ctx.restore();
 }
 
@@ -223,6 +225,22 @@ function drawBanana(p) {
   ctx.fillRect(p.x, p.y - 4, GRID * (bananaTimer / BANANA_LIFE), 2);
 }
 
+function drawPoison(p) {
+  const pulse = 1 + Math.sin(performance.now() / 150) * 0.12;
+  ctx.save();
+  ctx.translate(p.x + 10, p.y + 10);
+  ctx.scale(pulse, pulse);
+  ctx.shadowColor = C.poison;
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = C.poison; circle(0, 1, 8);
+  ctx.fillStyle = '#d8b4fe'; circle(-3, -2, 2);
+  ctx.strokeStyle = '#4c1d95'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(0, -9); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = C.poison;
+  ctx.fillRect(p.x, p.y - 4, GRID * (poisonTimer / POISON_LIFE), 2);
+}
+
 function drawDoor(p) {
   const pulse = 1 + Math.sin(performance.now() / 250) * 0.08;
   ctx.save();
@@ -293,12 +311,13 @@ function drawField() {
   drawApple(food);
   if (boost) drawBoost(boost);
   if (banana) drawBanana(banana);
+  if (poison) drawPoison(poison);
   if (door) drawDoor(door);
   
   for (let i = snake.length - 1; i >= 1; i--) {
     const col = segColor(sk, i, now);
     ctx.shadowColor = col;
-    ctx.shadowBlur = yellow ? 12 : 5; // банановое свечение
+    ctx.shadowBlur = yellow ? 12 : 5;
     ctx.fillStyle = col; 
     rr(snake[i].x + 0.5, snake[i].y + 0.5, GRID - 1, GRID - 1, 4); 
     ctx.fill();
@@ -344,9 +363,11 @@ function drawHUD(now) {
 
   if (mode === 'level') {
     text('Очки: ' + score, 20, 15, 24, C.text);
-    // Жизни-сердечки
     for (let i = 0; i < 3; i++) {
       emoji(i < lives ? '❤️' : '🖤', 22 + i * 26, 48, 20);
+    }
+    if (invertedUntil > now) {
+      text('☠️ Управление перепутано!', WIDTH / 2, 78, 20, C.poison, 'center');
     }
     text('Ур. ' + lvlIndex + ' | 🍎 ' + applesEaten + '/' + applesNeed, WIDTH - 20, 15, 18, C.gold, 'right');
     text('Время: ' + mm + ':' + ss, 20, HEIGHT - 40, 24, C.text);

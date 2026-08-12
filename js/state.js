@@ -34,6 +34,7 @@ let applesNeed = 0;
 let door = null;
 let lastLevelResult = null;
 let maxLevel = 0;
+let frameId = 'none';
 
 let walls = [];
 let wallsSet = new Set();
@@ -46,6 +47,10 @@ let banana = null;
 let bananaTimer = 0;
 let bananaCooldown = 0;
 let yellowUntil = 0;
+let poison = null;
+let poisonTimer = 0;
+let poisonCooldown = 0;
+let invertedUntil = 0;
 
 let score = 0;
 let high = 0;

@@ -13,7 +13,7 @@ const C = {
   text: '#f8fafc', btn: '#334155', btnHover: '#475569',
   accent: '#eab308', gold: '#facc15', dim: 'rgba(0,0,0,0.6)', gray: '#94a3b8',
   apple: '#ef4444', boost: '#facc15', ok: '#4ade80', wall: '#64748b',
-  heart: '#ef4444', door: '#a855f7', banana: '#facc15'
+  heart: '#ef4444', door: '#a855f7', banana: '#facc15', poison: '#a855f7'
 };
 
 const NICK_BASE = ['Удав','Питон','Кобра','Гадюка','Полоз','Мамба','Тайпан','Анаконда','Уж','Змей'];
@@ -37,6 +37,10 @@ const BANANA_POINTS = 5;
 const BANANA_YELLOW_MS = 3000;
 const BANANA_LIFE = 6000;
 
+// --- ОТРАВЛЕННОЕ ЯБЛОКО (только в уровнях) ---
+const POISON_INVERT_MS = 5000;
+const POISON_LIFE = 6000;
+
 // --- СКИНЫ ---
 const SKINS = [
   { id: 'green',   name: 'Классический', price: 0,    body: '#22c55e', head: '#16a34a' },
@@ -53,7 +57,11 @@ const SKINS = [
   { id: 'teal',    name: 'Бирюза',       price: 4700, body: '#14b8a6', head: '#0d9488' },
   { id: 'gold',    name: 'Золотой',      price: 5300, body: '#facc15', head: '#eab308' },
   { id: 'neon',    name: 'Неон',         price: 6200, body: '#39ff14', head: '#1fbf0f' },
-  { id: 'rainbow', name: 'Радуга',       price: 7990, body: '#ffffff', head: '#ffffff', rainbow: true }
+  { id: 'rainbow', name: 'Радуга',       price: 7990, body: '#ffffff', head: '#ffffff', rainbow: true },
+  // Полосатые скины за прохождение сложностей (множитель на ВСЕ монеты)
+  { id: 'stripes_easy', name: 'Полосатик', price: 0, body: '#22c55e', stripe: '#facc15', head: '#16a34a', striped: true, mult: 1.2, reward: 'easy' },
+  { id: 'stripes_med',  name: 'Тигр',      price: 0, body: '#f97316', stripe: '#1e293b', head: '#ea580c', striped: true, mult: 1.5, reward: 'medium' },
+  { id: 'stripes_hard', name: 'Плазма',    price: 0, body: '#39ff14', stripe: '#a855f7', head: '#1fbf0f', striped: true, mult: 2,   reward: 'hard' }
 ];
 
 // --- ФОНЫ ---

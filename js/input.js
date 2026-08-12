@@ -22,11 +22,13 @@ function handleTap(p) {
         if (inRect(p, row.rect)) {
           const it = row.item;
           if (shopTab === 'frames') {
-            SFX.click();
+            if (it.level <= maxLevel) { frameId = it.id; saveFrameId(); SFX.click(); }
+            else SFX.click();
             return;
           }
           if (shopTab === 'skins') {
             if (ownedSkins.includes(it.id)) { skinId = it.id; saveSkinId(); SFX.click(); }
+            else if (it.reward) { SFX.click(); } // награда за уровни — не покупается
             else if (coins >= it.price) openConfirm('skin', it);
             else openFunds(it);
           } else if (shopTab === 'bg') {

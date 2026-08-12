@@ -47,6 +47,12 @@ function loadAvatarId() {
 }
 function saveAvatarId() { try { localStorage.setItem('snake_avatar', avatarId); } catch (e) {} }
 
+// --- РАМКА (выбор игрока) ---
+function loadFrameId() {
+  try { return localStorage.getItem('snake_frame') || 'none'; } catch (e) { return 'none'; }
+}
+function saveFrameId() { try { localStorage.setItem('snake_frame', frameId); } catch (e) {} }
+
 // --- ПРОГРЕСС УРОВНЕЙ ---
 function loadLevelProgress() {
   const p = loadJSON('snake_lvlprog', null);
@@ -114,8 +120,11 @@ function initStorage() {
   levelTimes = loadLevelTimes();
   maxLevel = levelProgress.easy + levelProgress.medium + levelProgress.hard;
 
+  frameId = loadFrameId();
+
   boostCooldown = randInt(7000, 15000);
   bananaCooldown = randInt(9000, 16000);
+  poisonCooldown = randInt(6000, 12000);
 
   loadVolumes();
 }
