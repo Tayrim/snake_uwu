@@ -37,9 +37,35 @@ const BANANA_POINTS = 5;
 const BANANA_YELLOW_MS = 3000;
 const BANANA_LIFE = 6000;
 
-// --- ОТРАВЛЕННОЕ ЯБЛОКО (только в уровнях) ---
+// --- ОТРАВЛЕННОЕ ЯБЛОКО ---
 const POISON_INVERT_MS = 5000;
 const POISON_LIFE = 6000;
+
+// --- КОЛЕСО ФОРТУНЫ ---
+const WHEEL_PRIZES = [
+  { t: 'coins', v: 50,  c: '#334155' },
+  { t: 'coins', v: 100, c: '#166534' },
+  { t: 'buff',  v: 2,   c: '#9d174d' },
+  { t: 'coins', v: 150, c: '#854d0e' },
+  { t: 'coins', v: 75,  c: '#1e40af' },
+  { t: 'coins', v: 200, c: '#14532d' },
+  { t: 'buff',  v: 2,   c: '#6b21a8' },
+  { t: 'coins', v: 500, c: '#b45309' }
+];
+
+// --- ДОСТИЖЕНИЯ ---
+const ACHIEVEMENTS = [
+  { id: 'apples100',  icon: '🍎', name: 'Съешь 100 яблок',        reward: 100,  check: st => st.apples >= 100,   prog: st => [st.apples, 100] },
+  { id: 'apples500',  icon: '🍎', name: 'Съешь 500 яблок',        reward: 300,  check: st => st.apples >= 500,   prog: st => [st.apples, 500] },
+  { id: 'apples1500', icon: '🍎', name: 'Съешь 1500 яблок',       reward: 600,  check: st => st.apples >= 1500,  prog: st => [st.apples, 1500] },
+  { id: 'games10',    icon: '🎮', name: 'Сыграй 10 игр',          reward: 100,  check: st => st.games >= 10,     prog: st => [st.games, 10] },
+  { id: 'games50',    icon: '🎮', name: 'Сыграй 50 игр',          reward: 300,  check: st => st.games >= 50,     prog: st => [st.games, 50] },
+  { id: 'levels14',   icon: '🧱', name: 'Пройди лёгкую сложность',reward: 200,  check: st => st.levels >= 14,    prog: st => [st.levels, 14] },
+  { id: 'levels42',   icon: '🏆', name: 'Пройди все 42 уровня',   reward: 1000, check: st => st.levels >= 42,    prog: st => [st.levels, 42] },
+  { id: 'bananas10',  icon: '🍌', name: 'Съешь 10 бананов',       reward: 150,  check: st => st.bananas >= 10,   prog: st => [st.bananas, 10] },
+  { id: 'skins3',     icon: '🎨', name: 'Купи 3 скина',           reward: 150,  check: st => st.skinsBought >= 3,prog: st => [st.skinsBought, 3] },
+  { id: 'rich5000',   icon: '💰', name: 'Накопи 5000 монет',      reward: 300,  check: () => coins >= 5000,      prog: () => [coins, 5000] }
+];
 
 // --- СКИНЫ ---
 const SKINS = [
@@ -58,7 +84,6 @@ const SKINS = [
   { id: 'gold',    name: 'Золотой',      price: 5300, body: '#facc15', head: '#eab308' },
   { id: 'neon',    name: 'Неон',         price: 6200, body: '#39ff14', head: '#1fbf0f' },
   { id: 'rainbow', name: 'Радуга',       price: 7990, body: '#ffffff', head: '#ffffff', rainbow: true },
-  // Полосатые скины за прохождение сложностей (множитель на ВСЕ монеты)
   { id: 'stripes_easy', name: 'Полосатик', price: 0, body: '#22c55e', stripe: '#facc15', head: '#16a34a', striped: true, mult: 1.2, reward: 'easy' },
   { id: 'stripes_med',  name: 'Тигр',      price: 0, body: '#f97316', stripe: '#1e293b', head: '#ea580c', striped: true, mult: 1.5, reward: 'medium' },
   { id: 'stripes_hard', name: 'Плазма',    price: 0, body: '#39ff14', stripe: '#a855f7', head: '#1fbf0f', striped: true, mult: 2,   reward: 'hard' }

@@ -64,12 +64,25 @@ function commitScore(withCoins = true) {
 }
 
 // ============================================
+// БАФФ ×2: расходуется на одну игру
+// ============================================
+function applyBuff() {
+  coinBuff = pendingBuff ? 2 : 1;
+  if (pendingBuff) {
+    pendingBuff = false;
+    savePendingBuff(false);
+  }
+}
+
+// ============================================
 // СТАРТ РЕЖИМОВ
 // ============================================
 function startGame(m) {
   ensureAudio();
   SFX.start();
   mode = m;
+  applyBuff();
+  statAdd('games', 1);
   gameSpeed = m === 'hard' ? SPEED_HARD : SPEED_CLASSIC;
   snake = [{ x: WIDTH / 2, y: HEIGHT / 2 }];
   dir = { x: 0, y: -GRID };
@@ -95,6 +108,8 @@ function startLevel(diffId, idx) {
   ensureAudio();
   SFX.start();
   mode = 'level';
+  applyBuff();
+  statAdd('games', 1);
   lvlDiff = diffId;
   lvlIndex = idx;
   const d = LEVEL_DIFFS[diffIndex(diffId)];
@@ -176,13 +191,15 @@ function completeLevel(now) {
   const prevBest = levelTimes[key] || null;
   const first = lvlIndex === levelProgress[lvlDiff] + 1;
 
+  statAdd('levels', 1);
+  questAdd('levels', 1);
+
   if (first) {
     levelProgress[lvlDiff] = lvlIndex;
     saveLevelProgress();
     maxLevel = levelProgress.easy + levelProgress.medium + levelProgress.hard;
   }
 
-  // Полосатый скин за ПОЛНОЕ прохождение сложности (выдаётся всегда, даже при повторном прохождении)
   let granted = null;
   if (levelProgress[lvlDiff] >= LEVELS_PER_DIFF) {
     const sk = SKINS.find(s => s.reward === lvlDiff);
@@ -196,7 +213,7 @@ function completeLevel(now) {
 
   let base = 0;
   if (first || prevBest === null || sec < prevBest) {
-    base = LEVEL_REWARD + score; // 150 + собранные очки
+    base = LEVEL_REWARD + score;
   }
 
   let newBest = false;
@@ -212,6 +229,20 @@ function completeLevel(now) {
   state = 'levelwin';
   SFX.levelUp();
   startMusic('menu');
+}
+
+// ============================================
+// КОЛЕСО ФОРТУНЫ
+// ============================================
+function startWheelSpin() {
+  if (!canSpinWheel()) { SFX.click(); return; }
+  const idx = randInt(0, WHEEL_PRIZES.length - 1);
+  const desired = ((270 - idx * 45 - 22.5) % 360 + 360) % 360;
+  const cur = ((wheelAngle % 360) + 360) % 360;
+  let delta = desired - cur;
+  while (delta <= 0) delta += 360;
+  wheelSpin = { start: performance.now(), from: wheelAngle, to: wheelAngle + 5 * 360 + delta, idx: idx };
+  SFX.start();
 }
 
 // ============================================
@@ -315,6 +346,23 @@ function update(now, dt) {
   updateParticles(dt);
   if (state === 'menu') updateMenuParts(dt);
 
+  // Анимация колеса фортуны
+  if (wheelSpin) {
+    const t = Math.min(1, (now - wheelSpin.start) / 3000);
+    const e = 1 - Math.pow(1 - t, 3);
+    wheelAngle = wheelSpin.from + (wheelSpin.to - wheelSpin.from) * e;
+    if (t >= 1) {
+      const prize = WHEEL_PRIZES[wheelSpin.idx];
+      wheelResult = prize;
+      wheelSpin = null;
+      wheelLastDate = todayStr();
+      saveWheelDate(wheelLastDate);
+      if (prize.t === 'coins') addCoins(prize.v);
+      else { pendingBuff = true; savePendingBuff(true); }
+      SFX.buy();
+    }
+  }
+
   if (state === 'countdown' && now - countdownStart >= 2400) {
     state = 'play';
     gameStart = now; lastStep = now;
@@ -371,13 +419,15 @@ function update(now, dt) {
         const h = snake[0];
         // Яблоко
         if (h.x === food.x && h.y === food.y) {
+          statAdd('apples', 1);
+          questAdd('apples', 1);
           if (mode === 'level') {
             applesEaten++;
             if (applesEaten > applesNeed) {
               failLevel(now);
               return;
             }
-            score += 10;
+            addScore(10);
             growPending = true;
             const d = LEVEL_DIFFS[diffIndex(lvlDiff)];
             gameSpeed = Math.min(gameSpeed + d.speedUp, d.baseSpeed + 6);
@@ -389,7 +439,7 @@ function update(now, dt) {
               SFX.bonus();
             }
           } else {
-            score += appleScore(elapsedSec(now));
+            addScore(appleScore(elapsedSec(now)));
             growPending = true;
             spawnParticles(food.x, food.y, C.apple, 15);
             spawnFood();
@@ -398,7 +448,8 @@ function update(now, dt) {
         }
         // Банан
         if (banana && h.x === banana.x && h.y === banana.y) {
-          score += BANANA_POINTS;
+          addScore(BANANA_POINTS);
+          statAdd('bananas', 1);
           yellowUntil = now + BANANA_YELLOW_MS;
           spawnParticles(banana.x, banana.y, C.banana, 20);
           banana = null;
@@ -415,7 +466,7 @@ function update(now, dt) {
         }
         // Звезда
         if (boost && h.x === boost.x && h.y === boost.y) {
-          score += 3; growPending = true;
+          addScore(3); growPending = true;
           spawnParticles(boost.x, boost.y, C.boost, 20);
           boost = null; boostCooldown = randInt(7000, 15000);
           SFX.bonus();

@@ -47,7 +47,6 @@ function loadAvatarId() {
 }
 function saveAvatarId() { try { localStorage.setItem('snake_avatar', avatarId); } catch (e) {} }
 
-// --- РАМКА (выбор игрока) ---
 function loadFrameId() {
   try { return localStorage.getItem('snake_frame') || 'none'; } catch (e) { return 'none'; }
 }
@@ -80,6 +79,59 @@ function loadDaily() {
   return { last: '', day: 0 };
 }
 function saveDaily(d) { saveJSON('snake_daily', d); }
+
+// --- СТАТИСТИКА (для достижений) ---
+function loadStats() {
+  const s = loadJSON('snake_stats', null);
+  if (s && typeof s === 'object') {
+    return {
+      apples: parseInt(s.apples || 0, 10) || 0,
+      games: parseInt(s.games || 0, 10) || 0,
+      levels: parseInt(s.levels || 0, 10) || 0,
+      bananas: parseInt(s.bananas || 0, 10) || 0,
+      skinsBought: parseInt(s.skinsBought || 0, 10) || 0
+    };
+  }
+  return { apples: 0, games: 0, levels: 0, bananas: 0, skinsBought: 0 };
+}
+function saveStats(v) { saveJSON('snake_stats', v); }
+
+// --- ДОСТИЖЕНИЯ (полученные) ---
+function loadAchClaimed() {
+  const a = loadJSON('snake_ach', null);
+  return Array.isArray(a) ? a : [];
+}
+function saveAchClaimed() { saveJSON('snake_ach', achClaimed); }
+
+// --- ЗАДАНИЯ ДНЯ ---
+function loadQuests() {
+  const q = loadJSON('snake_quests', null);
+  if (q && q.date === todayStr() && q.p) {
+    return {
+      date: q.date,
+      p: {
+        apples: parseInt(q.p.apples || 0, 10) || 0,
+        levels: parseInt(q.p.levels || 0, 10) || 0,
+        score: parseInt(q.p.score || 0, 10) || 0
+      },
+      claimed: Array.isArray(q.claimed) ? [!!q.claimed[0], !!q.claimed[1], !!q.claimed[2]] : [false, false, false]
+    };
+  }
+  return { date: todayStr(), p: { apples: 0, levels: 0, score: 0 }, claimed: [false, false, false] };
+}
+function saveQuests(v) { saveJSON('snake_quests', v); }
+
+// --- КОЛЕСО ФОРТУНЫ ---
+function loadWheelDate() {
+  try { return localStorage.getItem('snake_wheel') || ''; } catch (e) { return ''; }
+}
+function saveWheelDate(d) { try { localStorage.setItem('snake_wheel', d); } catch (e) {} }
+
+// --- БАФФ ×2 ---
+function loadPendingBuff() {
+  try { return localStorage.getItem('snake_buff') === '1'; } catch (e) { return false; }
+}
+function savePendingBuff(v) { try { localStorage.setItem('snake_buff', v ? '1' : '0'); } catch (e) {} }
 
 // --- РЕКОРДЫ ---
 function loadScores() {
@@ -121,6 +173,12 @@ function initStorage() {
   maxLevel = levelProgress.easy + levelProgress.medium + levelProgress.hard;
 
   frameId = loadFrameId();
+
+  stats = loadStats();
+  achClaimed = loadAchClaimed();
+  quests = loadQuests();
+  wheelLastDate = loadWheelDate();
+  pendingBuff = loadPendingBuff();
 
   boostCooldown = randInt(7000, 15000);
   bananaCooldown = randInt(9000, 16000);

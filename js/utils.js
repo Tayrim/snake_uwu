@@ -70,7 +70,6 @@ function currentSkin() { return SKINS.find(s => s.id === skinId) || SKINS[0]; }
 function currentTheme() { return THEMES.find(t => t.id === themeId) || THEMES[0]; }
 function currentAvatar() { return AVATARS.find(a => a.id === avatarId) || AVATARS[0]; }
 
-// Рамка: выбранная игроком, если разблокирована, иначе лучшая
 function currentFrame() {
   const sel = FRAMES.find(f => f.id === frameId);
   if (sel && sel.level <= maxLevel) return sel;
@@ -81,20 +80,25 @@ function currentFrame() {
   return best;
 }
 
-// Множитель монет от скина
 function currentSkinMult() { return currentSkin().mult || 1; }
 
-// Начисление монет с учётом множителя скина
+// Начисление монет: множитель скина × бафф ×2
 function addCoins(n) {
-  const v = Math.round(n * currentSkinMult());
+  const v = Math.round(n * currentSkinMult() * coinBuff);
   coins += v;
   saveCoins();
   return v;
 }
 
+// Очки + прогресс квеста «набери очков»
+function addScore(n) {
+  score += n;
+  questAdd('score', n);
+}
+
 function segColor(sk, i, now) {
   if (yellowUntil > now) return C.banana;
-  if (sk.striped) return i % 2 ? sk.stripe : sk.body; // полосатые скины
+  if (sk.striped) return i % 2 ? sk.stripe : sk.body;
   if (sk.rainbow) return 'hsl(' + Math.floor((i * 12 + now / 10) % 360) + ',85%,55%)';
   return sk.body;
 }
@@ -104,7 +108,7 @@ function headColorOf(sk, now) {
   return sk.head;
 }
 
-// --- УРОВНИ: разблокировки ---
+// --- УРОВНИ ---
 function diffIndex(id) { return LEVEL_DIFFS.findIndex(d => d.id === id); }
 function diffUnlocked(id) {
   if (id === 'easy') return true;
@@ -122,7 +126,7 @@ function fmtTime(sec) {
   return mm + ':' + ss;
 }
 
-// --- ЕЖЕДНЕВНЫЕ НАГРАДЫ ---
+// --- ДАТЫ ---
 function todayStr() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -138,15 +142,71 @@ function dailyInfo() {
   return { d: d, next: next, canClaim: true };
 }
 
+// --- ЗАДАНИЯ ДНЯ ---
+function dateSeed() {
+  const t = todayStr();
+  let s = 0;
+  for (let i = 0; i < t.length; i++) s = (s * 31 + t.charCodeAt(i)) | 0;
+  return Math.abs(s);
+}
+function todayQuests() {
+  const s = dateSeed();
+  const applesNeed = 20 + (s % 3) * 5;
+  const levelsNeed = 1 + (s % 2);
+  const scoreNeed = 200 + (s % 4) * 100;
+  return [
+    { id: 'apples', icon: '🍎', text: 'Съешь ' + applesNeed + ' яблок', need: applesNeed, reward: 100 },
+    { id: 'levels', icon: '🧱', text: 'Пройди ' + levelsNeed + ' уровня', need: levelsNeed, reward: 150 },
+    { id: 'score',  icon: '⭐', text: 'Набери ' + scoreNeed + ' очков', need: scoreNeed, reward: 200 }
+  ];
+}
+function questAdd(id, n) {
+  if (!quests || quests.date !== todayStr()) quests = loadQuests();
+  if (quests.p[id] == null) quests.p[id] = 0;
+  quests.p[id] += n;
+  saveQuests(quests);
+}
+function questsClaimableCount() {
+  if (!quests || quests.date !== todayStr()) return 0;
+  const list = todayQuests();
+  let c = 0;
+  for (let i = 0; i < list.length; i++) {
+    if (!quests.claimed[i] && (quests.p[list[i].id] || 0) >= list[i].need) c++;
+  }
+  return c;
+}
+
+// --- СТАТИСТИКА / ДОСТИЖЕНИЯ ---
+function statAdd(key, n) {
+  stats[key] = (stats[key] || 0) + n;
+  saveStats(stats);
+}
+function achClaimableCount() {
+  let c = 0;
+  for (const a of ACHIEVEMENTS) {
+    if (!achClaimed.includes(a.id) && a.check(stats)) c++;
+  }
+  return c;
+}
+
+// --- КОЛЕСО ---
+function canSpinWheel() {
+  return wheelLastDate !== todayStr() && !wheelSpin && !wheelResult;
+}
+
 function calcBtns() {
   const w = 300, h = 50;
   const cx = WIDTH / 2 - w / 2;
   BTN_MENU_1 = { x: 205, y: 205, w: 190, h: 56 };
   BTN_MENU_2 = { x: 205, y: 280, w: 190, h: 56 };
   BTN_MENU_3 = { x: 205, y: 355, w: 190, h: 56 };
-  BTN_SHOP = { x: 25, y: 282, w: 160, h: 60 };
-  BTN_GIFT = { x: 25, y: 212, w: 160, h: 60 };
-  BTN_SETTINGS = { x: 25, y: 352, w: 160, h: 60 };
+  BTN_GIFT = { x: 25, y: 182, w: 160, h: 60 };
+  BTN_QUESTS = { x: 25, y: 252, w: 160, h: 60 };
+  BTN_SHOP = { x: 25, y: 322, w: 160, h: 60 };
+  BTN_SETTINGS = { x: 25, y: 392, w: 160, h: 60 };
+  BTN_ACH = { x: WIDTH - 140, y: 15, w: 60, h: 50 };
+  BTN_WHEEL = { x: WIDTH - 70, y: 15, w: 60, h: 50 };
+  BTN_SPIN = { x: WIDTH / 2 - 70, y: HEIGHT - 95, w: 140, h: 50 };
   BTN_BACK = { x: 20, y: 20, w: 110, h: 40 };
   BTN_PROFILE = { x: 15, y: 15, w: 230, h: 50 };
   STAT_CARD = { x: 405, y: 196, w: 180, h: 240 };

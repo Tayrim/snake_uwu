@@ -67,6 +67,20 @@ let nick = 'Удав';
 
 let scoresCache = null;
 
+// --- КВЕСТЫ / ДОСТИЖЕНИЯ / КОЛЕСО / СТАТИСТИКА ---
+let stats = { apples: 0, games: 0, levels: 0, bananas: 0, skinsBought: 0 };
+let quests = null;
+let achClaimed = [];
+let wheelLastDate = '';
+let pendingBuff = false;
+let coinBuff = 1;
+let wheelAngle = 0;
+let wheelSpin = null;
+let wheelResult = null;
+
+let questsOpen = false;
+let achOpen = false;
+
 let quickPaused = false;
 let gameStart = 0;
 let pausedAccum = 0;
@@ -97,10 +111,15 @@ const sfxVolEl = document.getElementById('sfxVol');
 const sfxVolValEl = document.getElementById('sfxVolVal');
 const dailyDialogEl = document.getElementById('dailyDialog');
 const dailyGridEl = document.getElementById('dailyGrid');
+const questsDialogEl = document.getElementById('questsDialog');
+const questsListEl = document.getElementById('questsList');
+const achDialogEl = document.getElementById('achDialog');
+const achListEl = document.getElementById('achList');
 
 // --- КНОПКИ ---
 let BTN_MENU_1 = {}, BTN_MENU_2 = {}, BTN_MENU_3 = {};
-let BTN_SHOP = {}, BTN_GIFT = {}, BTN_SETTINGS = {};
+let BTN_SHOP = {}, BTN_GIFT = {}, BTN_SETTINGS = {}, BTN_QUESTS = {};
+let BTN_WHEEL = {}, BTN_ACH = {}, BTN_SPIN = {};
 let BTN_BACK = {};
 let BTN_PROFILE = {};
 let STAT_CARD = {}, STAT_WEEK = {}, STAT_REC = {}, STAT_LEAD = {};

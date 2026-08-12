@@ -4,7 +4,10 @@ function handleTap(p) {
   if (state === 'menu') {
     if (inRect(p, BTN_PROFILE)) { openProfileDialog(); SFX.click(); return; }
     if (inRect(p, BTN_GIFT)) { openDaily(); return; }
+    if (inRect(p, BTN_QUESTS)) { openQuests(); return; }
     if (inRect(p, BTN_SETTINGS)) { openSettings(); return; }
+    if (inRect(p, BTN_WHEEL)) { state = 'wheel'; SFX.click(); return; }
+    if (inRect(p, BTN_ACH)) { openAch(); return; }
     if (inRect(p, BTN_MENU_1)) { startGame('classic'); return; }
     if (inRect(p, BTN_MENU_2)) { startGame('hard'); return; }
     if (inRect(p, BTN_MENU_3)) { state = 'levels'; SFX.click(); return; }
@@ -28,7 +31,7 @@ function handleTap(p) {
           }
           if (shopTab === 'skins') {
             if (ownedSkins.includes(it.id)) { skinId = it.id; saveSkinId(); SFX.click(); }
-            else if (it.reward) { SFX.click(); } // награда за уровни — не покупается
+            else if (it.reward) { SFX.click(); }
             else if (coins >= it.price) openConfirm('skin', it);
             else openFunds(it);
           } else if (shopTab === 'bg') {
@@ -61,6 +64,13 @@ function handleTap(p) {
         else SFX.error();
         return;
       }
+    }
+  } else if (state === 'wheel') {
+    if (inRect(p, BTN_BACK)) { state = 'menu'; SFX.click(); return; }
+    if (inRect(p, BTN_SPIN) && !wheelSpin) {
+      if (wheelResult) { wheelResult = null; state = 'menu'; SFX.click(); }
+      else startWheelSpin();
+      return;
     }
   } else if (state === 'play') {
     if (quickPaused) resumeGame();
@@ -95,13 +105,21 @@ function handleTap(p) {
 }
 
 function isMenuLikeState() {
-  return state === 'menu' || state === 'shop' || state === 'records' || state === 'levels';
+  return state === 'menu' || state === 'shop' || state === 'records' || state === 'levels' || state === 'wheel';
 }
 
 function setupInput() {
   window.addEventListener('keydown', (e) => {
     if (dailyOpen) {
       if (e.code === 'Escape') closeDaily();
+      return;
+    }
+    if (questsOpen) {
+      if (e.code === 'Escape') closeQuests();
+      return;
+    }
+    if (achOpen) {
+      if (e.code === 'Escape') closeAch();
       return;
     }
     if (settingsOpen) {
@@ -122,7 +140,7 @@ function setupInput() {
     }
     if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
     const c = e.code;
-    if (state === 'shop' || state === 'records' || state === 'levels') {
+    if (state === 'shop' || state === 'records' || state === 'levels' || state === 'wheel') {
       if (c === 'Escape') { state = 'menu'; SFX.click(); }
       return;
     }
@@ -278,4 +296,10 @@ function setupInput() {
     claimDaily();
   });
   document.getElementById('dailyClose').addEventListener('click', () => closeDaily());
+
+  // Задания дня
+  document.getElementById('questsClose').addEventListener('click', () => closeQuests());
+
+  // Достижения
+  document.getElementById('achClose').addEventListener('click', () => closeAch());
 }

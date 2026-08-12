@@ -56,8 +56,7 @@ document.addEventListener('visibilitychange', () => {
   } else {
     if (audioCtx) audioCtx.resume();
     if (musicVolume > 0.01) {
-      const menuLike = state === 'menu' || state === 'shop' || state === 'records' || state === 'levels' || state === 'gameover' || state === 'levelwin';
-      startMusic(menuLike ? 'menu' : 'game');
+      startMusic(isMenuLikeState() ? 'menu' : 'game');
     }
   }
 });
@@ -69,7 +68,6 @@ function loop(now) {
   update(now, dt);
   draw(now);
 
-  // Кнопки управления видны только в игровом процессе
   const ingame = state === 'countdown' || state === 'play' || state === 'pausemenu' || state === 'gameover' || state === 'levelwin';
   document.body.classList.toggle('ingame', ingame);
 
@@ -89,12 +87,11 @@ requestAnimationFrame(() => {
   requestAnimationFrame(loop);
 });
 
-// Музыка стартует после первого взаимодействия (требование браузеров)
+// Музыка стартует после первого взаимодействия
 function tryStartMusic() {
   ensureAudio();
   if (!currentMusicMode && musicVolume > 0.01) {
-    const menuLike = state === 'menu' || state === 'shop' || state === 'records' || state === 'levels';
-    startMusic(menuLike ? 'menu' : 'game');
+    startMusic(isMenuLikeState() ? 'menu' : 'game');
   }
   document.removeEventListener('click', tryStartMusic);
   document.removeEventListener('touchstart', tryStartMusic);

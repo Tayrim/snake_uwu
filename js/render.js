@@ -48,7 +48,6 @@ function drawTab(r, label, active, locked) {
   ctx.globalAlpha = 1;
 }
 
-// Авто-размер шрифта, чтобы длинные надписи влезали аккуратно
 function drawModeBtn(r, label, icon, base, hoverCol, glow) {
   const hov = inRect(mouse, r);
   ctx.save();
@@ -67,6 +66,22 @@ function drawModeBtn(r, label, icon, base, hoverCol, glow) {
   emoji(icon, r.x + 12, r.y + (r.h - 24) / 2, 24);
   text(label, r.x + 44 + (r.w - 44) / 2, r.y + (r.h - fs) / 2, fs, C.text, 'center');
   ctx.restore();
+}
+
+// Маленькая квадратная кнопка (колесо / достижения)
+function drawIconBtn(r, icon, badge) {
+  const hov = inRect(mouse, r);
+  ctx.fillStyle = hov ? C.btnHover : C.btn;
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 6;
+  rr(r.x, r.y, r.w, r.h, 10); ctx.fill();
+  ctx.shadowBlur = 0;
+  emoji(icon, r.x + r.w / 2, r.y + (r.h - 26) / 2, 26, 'center');
+  if (badge) {
+    ctx.fillStyle = '#ef4444';
+    circle(r.x + r.w - 8, r.y + 8, 7);
+    text('!', r.x + r.w - 8, r.y + 2, 12, '#ffffff', 'center');
+  }
 }
 
 function drawStatTile(r, icon, label, value) {
@@ -376,6 +391,7 @@ function drawHUD(now) {
   } else {
     text('Очки: ' + score, 20, 15, 24, C.text);
     text('Рекорд: ' + Math.max(high, score), WIDTH - 20, 15, 24, C.gold, 'right');
+    if (coinBuff > 1) text('×2 МОНЕТЫ!', WIDTH / 2, 15, 20, C.gold, 'center');
     text('Время: ' + mm + ':' + ss, 20, HEIGHT - 40, 24, C.text);
     text('Множитель: ' + multText(sec), WIDTH - 20, HEIGHT - 35, 18, C.gold, 'right');
   }
@@ -389,4 +405,76 @@ function drawStaticBackground() {
   bgCtx.lineWidth = 1;
   for (let x = 0; x <= WIDTH; x += GRID) { bgCtx.beginPath(); bgCtx.moveTo(x, 0); bgCtx.lineTo(x, HEIGHT); bgCtx.stroke(); }
   for (let y = 0; y <= HEIGHT; y += GRID) { bgCtx.beginPath(); bgCtx.moveTo(0, y); bgCtx.lineTo(WIDTH, y); bgCtx.stroke(); }
+}
+
+// ============================================
+// КОЛЕСО ФОРТУНЫ
+// ============================================
+function drawWheel() {
+  ctx.fillStyle = C.bg; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  drawBtn(BTN_BACK, 'Назад', 18);
+  text('КОЛЕСО ФОРТУНЫ', WIDTH / 2, 30, 36, C.accent, 'center');
+  text(wheelLastDate === todayStr() && !wheelSpin && !wheelResult
+    ? 'Сегодня уже крутил — возвращайся завтра!'
+    : 'Один бесплатный спин в день!', WIDTH / 2, 76, 15, C.gray, 'center');
+
+  const cx = WIDTH / 2, cy = 300, R = 165;
+
+  for (let i = 0; i < WHEEL_PRIZES.length; i++) {
+    const a0 = (wheelAngle + i * 45) * Math.PI / 180;
+    const a1 = a0 + Math.PI / 4;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, a0, a1);
+    ctx.closePath();
+    ctx.fillStyle = WHEEL_PRIZES[i].c;
+    ctx.fill();
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    const mid = (a0 + a1) / 2;
+    const lx = cx + Math.cos(mid) * R * 0.68;
+    const ly = cy + Math.sin(mid) * R * 0.68;
+    ctx.save();
+    ctx.translate(lx, ly);
+    ctx.rotate(mid);
+    ctx.font = 'bold 17px Arial';
+    ctx.fillStyle = '#f8fafc';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 3;
+    ctx.fillText(WHEEL_PRIZES[i].t === 'buff' ? '×2' : String(WHEEL_PRIZES[i].v), 0, 0);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // Обод
+  ctx.beginPath(); ctx.arc(cx, cy, R + 6, 0, Math.PI * 2);
+  ctx.strokeStyle = C.gold; ctx.lineWidth = 4; ctx.stroke();
+
+  // Указатель сверху
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - R - 12);
+  ctx.lineTo(cx - 11, cy - R - 30);
+  ctx.lineTo(cx + 11, cy - R - 30);
+  ctx.closePath();
+  ctx.fillStyle = C.accent; ctx.fill();
+
+  // Центр
+  ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+  ctx.fillStyle = C.gold; ctx.fill();
+
+  if (wheelSpin) {
+    text('Крутится...', WIDTH / 2, HEIGHT - 45, 22, C.gold, 'center');
+  } else if (wheelResult) {
+    const p = wheelResult;
+    text(p.t === 'buff' ? '🎉 Приз: ×2 на следующую игру!' : '🎉 Приз: ' + p.v + ' монет!', WIDTH / 2, HEIGHT - 92, 22, C.gold, 'center');
+    drawBtn(BTN_SPIN, 'Готово', 20);
+  } else if (canSpinWheel()) {
+    drawBtn(BTN_SPIN, 'КРУТИТЬ!', 22);
+  } else {
+    text('Приходи завтра!', WIDTH / 2, HEIGHT - 55, 18, C.gray, 'center');
+  }
 }

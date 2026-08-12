@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Snake Pixel</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
   <canvas id="game"></canvas>
@@ -86,15 +86,35 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=3"></script>
-  <script src="js/state.js?v=3"></script>
-  <script src="js/storage.js?v=3"></script>
-  <script src="js/audio.js?v=3"></script>
-  <script src="js/utils.js?v=3"></script>
-  <script src="js/game.js?v=3"></script>
-  <script src="js/render.js?v=3"></script>
-  <script src="js/ui.js?v=3"></script>
-  <script src="js/input.js?v=3"></script>
-  <script src="js/main.js?v=3"></script>
+  <div id="questsDialog" class="dialog">
+    <div class="box">
+      <div class="title">Задания дня 📋</div>
+      <div id="questsList" class="questList"></div>
+      <div class="row">
+        <button id="questsClose" class="ok">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="achDialog" class="dialog">
+    <div class="box">
+      <div class="title">Достижения 🏅</div>
+      <div id="achList" class="questList"></div>
+      <div class="row">
+        <button id="achClose" class="ok">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=4"></script>
+  <script src="js/state.js?v=4"></script>
+  <script src="js/storage.js?v=4"></script>
+  <script src="js/audio.js?v=4"></script>
+  <script src="js/utils.js?v=4"></script>
+  <script src="js/game.js?v=4"></script>
+  <script src="js/render.js?v=4"></script>
+  <script src="js/ui.js?v=4"></script>
+  <script src="js/input.js?v=4"></script>
+  <script src="js/main.js?v=4"></script>
 </body>
 </html>

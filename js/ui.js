@@ -230,15 +230,27 @@ function draw(now) {
     text('ВЫБЕРИТЕ РЕЖИМ', WIDTH / 2, 130, 26, C.text, 'center');
     text('Классика, хардкор или уровни — выбери свой путь!', WIDTH / 2, 165, 16, C.gray, 'center');
 
+    // Левая колонка
     drawModeBtn(BTN_GIFT, 'Подарки', '🎁', '#9d174d', '#be185d', '#ec4899');
     if (dailyInfo().canClaim) {
       ctx.fillStyle = '#ef4444';
       circle(BTN_GIFT.x + BTN_GIFT.w - 10, BTN_GIFT.y + 10, 9);
       text('!', BTN_GIFT.x + BTN_GIFT.w - 10, BTN_GIFT.y + 3, 14, '#ffffff', 'center');
     }
+    drawModeBtn(BTN_QUESTS, 'Задания', '📋', '#1e40af', '#1d4ed8', '#3b82f6');
+    if (questsClaimableCount() > 0) {
+      ctx.fillStyle = '#ef4444';
+      circle(BTN_QUESTS.x + BTN_QUESTS.w - 10, BTN_QUESTS.y + 10, 9);
+      text('!', BTN_QUESTS.x + BTN_QUESTS.w - 10, BTN_QUESTS.y + 3, 14, '#ffffff', 'center');
+    }
     drawModeBtn(BTN_SHOP, 'Магазин', '🛒', '#4c1d95', '#5b21b6', '#a855f7');
     drawModeBtn(BTN_SETTINGS, 'Настройки', '⚙️', '#334155', '#475569', '#94a3b8');
 
+    // Правый верх: достижения и колесо
+    drawIconBtn(BTN_ACH, '🏅', achClaimableCount() > 0);
+    drawIconBtn(BTN_WHEEL, '🎡', canSpinWheel());
+
+    // Режимы в центре
     drawModeBtn(BTN_MENU_1, 'Classic', '🐍', '#166534', '#15803d', '#22c55e');
     drawModeBtn(BTN_MENU_2, 'Hard', '🔥', '#991b1b', '#b91c1c', '#ef4444');
     drawModeBtn(BTN_MENU_3, 'Level', '🧱', '#854d0e', '#a16207', '#facc15');
@@ -256,7 +268,10 @@ function draw(now) {
       else if (inRect(mouse, BTN_MENU_3)) hovId = 'm3';
       else if (inRect(mouse, BTN_SHOP)) hovId = 'shop';
       else if (inRect(mouse, BTN_GIFT)) hovId = 'gift';
+      else if (inRect(mouse, BTN_QUESTS)) hovId = 'quest';
       else if (inRect(mouse, BTN_SETTINGS)) hovId = 'set';
+      else if (inRect(mouse, BTN_WHEEL)) hovId = 'wheel';
+      else if (inRect(mouse, BTN_ACH)) hovId = 'ach';
       else if (inRect(mouse, BTN_PROFILE)) hovId = 'prof';
       else if (inRect(mouse, STAT_WEEK)) hovId = 'sw';
       else if (inRect(mouse, STAT_REC)) hovId = 'sr';
@@ -270,6 +285,8 @@ function draw(now) {
     drawRecords();
   } else if (state === 'levels') {
     drawLevels();
+  } else if (state === 'wheel') {
+    drawWheel();
   } else {
     drawField();
     drawHUD(now);
@@ -293,7 +310,7 @@ function draw(now) {
       const r = lastLevelResult || { time: 0, reward: 0, newBest: false, granted: null };
       text('Время: ' + fmtTime(r.time), WIDTH / 2, 190, 26, C.text, 'center');
       if (r.newBest) text('🏆 Новый рекорд времени!', WIDTH / 2, 224, 18, C.gold, 'center');
-      text(r.reward > 0 ? '+' + r.reward + ' монет (150 + очки' + (currentSkinMult() > 1 ? ' × ' + currentSkinMult() : '') + ')' : 'Награда: пройди быстрее своего времени', WIDTH / 2, 250, 15, r.reward > 0 ? C.gold : C.gray, 'center');
+      text(r.reward > 0 ? '+' + r.reward + ' монет (150 + очки' + (currentSkinMult() > 1 ? ' × ' + currentSkinMult() : '') + (coinBuff > 1 ? ' × 2' : '') + ')' : 'Награда: пройди быстрее своего времени', WIDTH / 2, 250, 15, r.reward > 0 ? C.gold : C.gray, 'center');
       if (r.granted) text('🎁 Получен скин: ' + r.granted + '!', WIDTH / 2, 276, 16, C.ok, 'center');
       drawBtn(BTN_LW_NEXT, lvlIndex < LEVELS_PER_DIFF ? 'Следующий' : 'Все уровни пройдены!', 20);
       drawBtn(BTN_LW_RETRY, 'Заново', 20);
@@ -307,7 +324,7 @@ function draw(now) {
       if (mode === 'level') {
         text(extra + '❤️ не хватило', WIDTH / 2, 300, 16, C.gray, 'center');
       } else {
-        text(extra + '+' + Math.round(coinsFromScore(score) * currentSkinMult()) + ' монет', WIDTH / 2, 300, 16, C.gray, 'center');
+        text(extra + '+' + Math.round(coinsFromScore(score) * currentSkinMult() * coinBuff) + ' монет', WIDTH / 2, 300, 16, C.gray, 'center');
       }
       drawBtn(BTN_GO_RESTART, 'Заново');
       drawBtn(BTN_GO_MENU, mode === 'level' ? 'К уровням' : 'Меню');
@@ -318,7 +335,8 @@ function draw(now) {
   if (!IS_TOUCH) {
     if (state === 'menu') {
       hover = inRect(mouse, BTN_MENU_1) || inRect(mouse, BTN_MENU_2) || inRect(mouse, BTN_MENU_3) ||
-              inRect(mouse, BTN_SHOP) || inRect(mouse, BTN_GIFT) || inRect(mouse, BTN_SETTINGS) ||
+              inRect(mouse, BTN_SHOP) || inRect(mouse, BTN_GIFT) || inRect(mouse, BTN_QUESTS) ||
+              inRect(mouse, BTN_SETTINGS) || inRect(mouse, BTN_WHEEL) || inRect(mouse, BTN_ACH) ||
               inRect(mouse, BTN_PROFILE) ||
               inRect(mouse, STAT_WEEK) || inRect(mouse, STAT_REC) || inRect(mouse, STAT_LEAD);
     } else if (state === 'shop') {
@@ -329,6 +347,8 @@ function draw(now) {
     } else if (state === 'levels') {
       hover = inRect(mouse, BTN_BACK) || DIFF_TABS.some(r => inRect(mouse, r)) ||
               LEVEL_CELLS.some(c => inRect(mouse, c) && levelUnlocked(lvlDiff, c.idx));
+    } else if (state === 'wheel') {
+      hover = inRect(mouse, BTN_BACK) || (!wheelSpin && inRect(mouse, BTN_SPIN));
     } else if (state === 'pausemenu') {
       hover = inRect(mouse, BTN_CONT) || inRect(mouse, BTN_RESTART) || inRect(mouse, BTN_MENU_BTN);
     } else if (state === 'levelwin') {
@@ -419,6 +439,7 @@ function doConfirmPurchase() {
       coins -= item.price; saveCoins();
       ownedSkins.push(item.id); saveOwnedSkins();
       skinId = item.id; saveSkinId();
+      statAdd('skinsBought', 1);
       SFX.buy();
     }
   } else if (kind === 'theme') {
@@ -532,4 +553,99 @@ function claimDaily() {
   saveDaily({ last: todayStr(), day: info.next });
   SFX.buy();
   buildDailyGrid();
+}
+
+// ============================================
+// ЗАДАНИЯ ДНЯ
+// ============================================
+function openQuests() {
+  questsOpen = true;
+  buildQuestsList();
+  questsDialogEl.classList.add('open');
+  SFX.click();
+}
+
+function closeQuests() {
+  questsOpen = false;
+  questsDialogEl.classList.remove('open');
+  SFX.click();
+}
+
+function buildQuestsList() {
+  if (!quests || quests.date !== todayStr()) quests = loadQuests();
+  const list = todayQuests();
+  questsListEl.innerHTML = '';
+  for (let i = 0; i < list.length; i++) {
+    const q = list[i];
+    const prog = Math.min(quests.p[q.id] || 0, q.need);
+    const claimed = quests.claimed[i];
+    const ready = !claimed && prog >= q.need;
+    const div = document.createElement('div');
+    div.className = 'qItem' + (claimed ? ' done' : ready ? ' ready' : '');
+    div.innerHTML = '<span class="qi">' + q.icon + '</span>' +
+      '<span class="qt">' + q.text + '<br><span class="qp">' + prog + '/' + q.need + '</span> <span class="qr">+' + q.reward + ' монет</span></span>';
+    const btn = document.createElement('button');
+    if (claimed) { btn.textContent = '✓'; }
+    else if (ready) { btn.textContent = 'Забрать'; btn.className = 'ok2'; }
+    else { btn.textContent = '•••'; }
+    btn.addEventListener('click', () => claimQuest(i));
+    div.appendChild(btn);
+    questsListEl.appendChild(div);
+  }
+}
+
+function claimQuest(i) {
+  const list = todayQuests();
+  if (quests.claimed[i] || (quests.p[list[i].id] || 0) < list[i].need) { SFX.click(); return; }
+  quests.claimed[i] = true;
+  saveQuests(quests);
+  addCoins(list[i].reward);
+  SFX.buy();
+  buildQuestsList();
+}
+
+// ============================================
+// ДОСТИЖЕНИЯ
+// ============================================
+function openAch() {
+  achOpen = true;
+  buildAchList();
+  achDialogEl.classList.add('open');
+  SFX.click();
+}
+
+function closeAch() {
+  achOpen = false;
+  achDialogEl.classList.remove('open');
+  SFX.click();
+}
+
+function buildAchList() {
+  achListEl.innerHTML = '';
+  for (const a of ACHIEVEMENTS) {
+    const claimed = achClaimed.includes(a.id);
+    const ready = !claimed && a.check(stats);
+    const pr = a.prog(stats);
+    const div = document.createElement('div');
+    div.className = 'qItem' + (claimed ? ' done' : ready ? ' ready' : '');
+    div.innerHTML = '<span class="qi">' + a.icon + '</span>' +
+      '<span class="qt">' + a.name + '<br><span class="qp">' + Math.min(pr[0], pr[1]) + '/' + pr[1] + '</span> <span class="qr">+' + a.reward + ' монет</span></span>';
+    const btn = document.createElement('button');
+    if (claimed) { btn.textContent = '✓'; }
+    else if (ready) { btn.textContent = 'Забрать'; btn.className = 'ok2'; }
+    else { btn.textContent = '•••'; }
+    btn.addEventListener('click', () => claimAch(a.id));
+    div.appendChild(btn);
+    achListEl.appendChild(div);
+  }
+}
+
+function claimAch(id) {
+  const a = ACHIEVEMENTS.find(x => x.id === id);
+  if (!a || achClaimed.includes(id) || !a.check(stats)) { SFX.click(); return; }
+  achClaimed.push(id);
+  saveAchClaimed();
+  addCoins(a.reward);
+  SFX.buy();
+  buildAchList();
 }
