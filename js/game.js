@@ -176,26 +176,27 @@ function completeLevel(now) {
   const prevBest = levelTimes[key] || null;
   const first = lvlIndex === levelProgress[lvlDiff] + 1;
 
-  let base = 0;
-  let granted = null;
-
   if (first) {
     levelProgress[lvlDiff] = lvlIndex;
     saveLevelProgress();
     maxLevel = levelProgress.easy + levelProgress.medium + levelProgress.hard;
-    base = LEVEL_REWARD + score; // 150 + собранные очки
-    // Полосатый скин за полное прохождение сложности
-    if (lvlIndex === LEVELS_PER_DIFF) {
-      const sk = SKINS.find(s => s.reward === lvlDiff);
-      if (sk && !ownedSkins.includes(sk.id)) {
-        ownedSkins.push(sk.id);
-        saveOwnedSkins();
-        granted = sk.name;
-        setTimeout(() => SFX.unlock(), 600);
-      }
+  }
+
+  // Полосатый скин за ПОЛНОЕ прохождение сложности (выдаётся всегда, даже при повторном прохождении)
+  let granted = null;
+  if (levelProgress[lvlDiff] >= LEVELS_PER_DIFF) {
+    const sk = SKINS.find(s => s.reward === lvlDiff);
+    if (sk && !ownedSkins.includes(sk.id)) {
+      ownedSkins.push(sk.id);
+      saveOwnedSkins();
+      granted = sk.name;
+      setTimeout(() => SFX.unlock(), 600);
     }
-  } else if (prevBest === null || sec < prevBest) {
-    base = LEVEL_REWARD + score;
+  }
+
+  let base = 0;
+  if (first || prevBest === null || sec < prevBest) {
+    base = LEVEL_REWARD + score; // 150 + собранные очки
   }
 
   let newBest = false;
@@ -219,7 +220,7 @@ function completeLevel(now) {
 function stepSnake(now) {
   if (dirQueue.length) {
     let d = dirQueue.shift();
-    if (invertedUntil > performance.now()) d = { x: -d.x, y: -d.y }; // перепутанное управление
+    if (invertedUntil > performance.now()) d = { x: -d.x, y: -d.y };
     dir = d;
   }
   const h = snake[0];
@@ -373,7 +374,6 @@ function update(now, dt) {
           if (mode === 'level') {
             applesEaten++;
             if (applesEaten > applesNeed) {
-              // Съел лишнее яблоко — проигрыш
               failLevel(now);
               return;
             }
