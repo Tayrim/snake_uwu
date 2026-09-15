@@ -226,9 +226,9 @@ function draw(now) {
     text(nick, p.x + 56, p.y + 8, 18, C.text);
     text('Ур. ' + maxLevel + ' | ' + coins + ' м', p.x + 56, p.y + 30, 12, C.gray);
 
-    text('SNAKE PIXEL', WIDTH / 2, 78, 44, C.accent, 'center');
-    text('ВЫБЕРИТЕ РЕЖИМ', WIDTH / 2, 130, 26, C.text, 'center');
-    text('Классика, приключение, хардкор или уровни — выбери свой путь!', WIDTH / 2, 165, 15, C.gray, 'center');
+      text('SNAKE PIXEL', WIDTH / 2, 68, 34, C.accent, 'center');
+    text('ВЫБЕРИТЕ РЕЖИМ', WIDTH / 2, 106, 20, C.text, 'center');
+       text('Классика, приключение, хардкор или уровни — выбери свой путь!', WIDTH / 2, 132, 13, C.gray, 'center');
 
     // Левая колонка
     drawModeBtn(BTN_GIFT, 'Подарки', '🎁', '#9d174d', '#be185d', '#ec4899');

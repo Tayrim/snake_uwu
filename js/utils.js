@@ -227,14 +227,18 @@ function calcBtns() {
   BTN_CONT = { x: cx, y: 250, w, h };
   BTN_RESTART = { x: cx, y: 320, w, h };
   BTN_MENU_BTN = { x: cx, y: 390, w, h };
-  BTN_GO_REVIVE = { x: cx, y: 280, w, h };
-  BTN_GO_X2 = { x: cx + 40, y: 246, w: 220, h: 34 };
-  BTN_GO_RESTART = { x: cx, y: 350, w, h };
-  BTN_GO_MENU = { x: cx, y: 420, w, h };
-  BTN_LW_NEXT = { x: cx, y: 300, w, h };
-  BTN_LW_RETRY = { x: cx, y: 370, w, h };
-  BTN_LW_LIST = { x: cx, y: 440, w, h };
-  BTN_LW_X2 = { x: cx + 40, y: 264, w: 220, h: 32 };
+
+  // ЭКРАН ПРОИГРЫША: кнопки ниже текста, ничего не перекрывают
+  BTN_GO_X2 = { x: cx + 40, y: 262, w: 220, h: 34 };
+  BTN_GO_REVIVE = { x: cx, y: 302, w, h: 46 };
+  BTN_GO_RESTART = { x: cx, y: 356, w, h: 46 };
+  BTN_GO_MENU = { x: cx, y: 410, w, h: 46 };
+
+  // ЭКРАН ПОБЕДЫ УРОВНЯ: то же самое
+  BTN_LW_X2 = { x: cx + 40, y: 300, w: 220, h: 32 };
+  BTN_LW_NEXT = { x: cx, y: 340, w, h: 46 };
+  BTN_LW_RETRY = { x: cx, y: 394, w, h: 46 };
+  BTN_LW_LIST = { x: cx, y: 448, w, h: 46 };
 
   DIFF_TABS = [
     { x: 60,  y: 100, w: 150, h: 44 },
