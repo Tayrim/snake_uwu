@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Snake Pixel</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="css/style.css?v=4">
+  <!-- Yandex Games SDK: грузим асинхронно, не блокируя игру -->
+  <script>
+    (function(d) {
+      var t = d.getElementsByTagName('script')[0];
+      var s = d.createElement('script');
+      s.src = 'https://yandex.ru/games/sdk/v2';
+      s.async = true;
+      t.parentNode.insertBefore(s, t);
+    })(document);
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="controls">
+    <div class="ctrl-group" id="ctrl-left">
+      <button id="btn-right">▶</button>
+      <button id="btn-left">◀</button>
+    </div>
+    <button id="btn-pause">II</button>
+    <div class="ctrl-group" id="ctrl-right">
+      <button id="btn-up">▲</button>
+      <button id="btn-down">▼</button>
+    </div>
+  </div>
+
+  <div id="profileDialog" class="dialog">
+    <div class="box">
+      <div class="title">Профиль</div>
+      <input id="nickInput" maxlength="14" placeholder="Ник">
+      <div class="row">
+        <button id="nickRand">🎲</button>
+        <button id="nickOk" class="ok">ОК</button>
+        <button id="nickCancel">✖</button>
+      </div>
+      <div class="title" style="margin-top:6px">Аватарка</div>
+      <div id="avatarGrid" class="avatarGrid"></div>
+    </div>
+  </div>
+
+  <div id="confirmDialog" class="dialog">
+    <div class="box">
+      <div class="title">Подтвердите покупку</div>
+      <div id="confirmText" class="confirmText"></div>
+      <div class="row">
+        <button id="confirmCancel">Отменить</button>
+        <button id="confirmOk" class="ok">Подтвердить</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="fundsDialog" class="dialog">
+    <div class="box">
+      <div class="title">Недостаточно средств</div>
+      <div id="fundsText" class="confirmText"></div>
+      <div class="row">
+        <button id="fundsAd" class="adBtn">🎬 Реклама → монеты</button>
+        <button id="fundsOk" class="ok">Понятно</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsDialog" class="dialog">
+    <div class="box">
+      <div class="title">Настройки</div>
+      <div class="setRow">
+        <span class="setLabel">🎵 Музыка</span>
+        <input type="range" id="musicVol" min="0" max="100" value="50">
+        <span class="setVal" id="musicVolVal">50</span>
+      </div>
+      <div class="setRow">
+        <span class="setLabel">🔔 Звуки</span>
+        <input type="range" id="sfxVol" min="0" max="100" value="100">
+        <span class="setVal" id="sfxVolVal">100</span>
+      </div>
+      <div class="row">
+        <button id="settingsClose" class="ok">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dailyDialog" class="dialog">
+    <div class="box">
+      <div class="title">Ежедневные награды 🎁</div>
+      <div id="dailyGrid" class="dailyGrid"></div>
+      <div class="row">
+        <button id="dailyClaim" class="ok">Забрать</button>
+        <button id="dailyClose">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="questsDialog" class="dialog">
+    <div class="box">
+      <div class="title">Задания дня 📋</div>
+      <div id="questsList" class="questList"></div>
+      <div class="row">
+        <button id="questsClose" class="ok">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="achDialog" class="dialog">
+    <div class="box">
+      <div class="title">Достижения 🏅</div>
+      <div id="achList" class="questList"></div>
+      <div class="row">
+        <button id="achClose" class="ok">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=4"></script>
+  <script src="js/state.js?v=4"></script>
+  <script src="js/storage.js?v=4"></script>
+  <script src="js/audio.js?v=4"></script>
+  <script src="js/yandex.js?v=4"></script>
+  <script src="js/utils.js?v=4"></script>
+  <script src="js/game.js?v=4"></script>
+  <script src="js/render.js?v=4"></script>
+  <script src="js/ui.js?v=4"></script>
+  <script src="js/input.js?v=4"></script>
+  <script src="js/main.js?v=4"></script>
+</body>
+</html>
