@@ -207,3 +207,17 @@ function fetchYandexTop(force) {
       yandexTopLoading = false;
     });
 }
+// ============================================
+// ДОПОЛНИТЕЛЬНЫЕ СПИНЫ КОЛЕСА ЗА РЕКЛАМУ
+// ============================================
+function requestAdSpin() {
+  if (!canAdSpinWheel()) return;
+  SFX.click();
+  showRewardedAd({
+    onReward: () => {
+      wheelExtraUsed++;
+      saveWheelExtraUsed();
+      startWheelSpin();
+    }
+  });
+}

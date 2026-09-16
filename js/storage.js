@@ -185,6 +185,7 @@ function initStorage() {
   achClaimed = loadAchClaimed();
   quests = loadQuests();
   wheelLastDate = loadWheelDate();
+  wheelExtraUsed = loadWheelExtraUsed();
   wheelExtraUsed = loadWheelExtra();
   pendingBuff = loadPendingBuff();
 
@@ -193,4 +194,15 @@ function initStorage() {
   poisonCooldown = randInt(6000, 12000);
 
   loadVolumes();
+}
+// --- ДОП. СПИНЫ КОЛЕСА ЗА РЕКЛАМУ ---
+function loadWheelExtraUsed() {
+  try { 
+    const d = loadJSON('snake_wheel_ad', null);
+    if (d && d.date === todayStr()) return parseInt(d.count || 0, 10) || 0;
+    return 0;
+  } catch (e) { return 0; }
+}
+function saveWheelExtraUsed() { 
+  saveJSON('snake_wheel_ad', { date: todayStr(), count: wheelExtraUsed }); 
 }
