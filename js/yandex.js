@@ -3,6 +3,7 @@
 // ============================================
 let ysdk = null;
 let ysdkReady = false;
+let gameLanguage = 'ru'; // Язык игры (по умолчанию русский)
 
 const YSDK_DEV_FALLBACK = true;
 
@@ -18,8 +19,13 @@ function initYandexSDK() {
           ysdkReady = true;
           console.log('Yandex SDK initialized');
 
+          // АВТООПРЕДЕЛЕНИЕ ЯЗЫКА (требование 2.14)
+          if (ysdk.environment && ysdk.environment.i18n) {
+            gameLanguage = ysdk.environment.i18n.lang || 'ru';
+            console.log('Game language detected:', gameLanguage);
+          }
+
           // ОБРАБОТКА ПАУЗЫ ОТ ЯНДЕКСА (требование 1.19.4)
-          // Яндекс может поставить игру на паузу со своей стороны
           ysdk.on('game_api_pause', () => {
             if (state === 'play' && !quickPaused) {
               quickPaused = true;
@@ -49,6 +55,7 @@ function initYandexSDK() {
       setTimeout(tryInit, 50);
     } else {
       console.warn('Yandex SDK script not found — running outside Yandex Games');
+      gameLanguage = 'ru'; // Фолбэк на русский
     }
   }
   tryInit();
