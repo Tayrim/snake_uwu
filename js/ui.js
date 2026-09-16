@@ -141,19 +141,36 @@ function drawRecords() {
     text(String(high), WIDTH / 2, 260, 56, C.gold, 'center');
     text('Пройдено уровней: ' + maxLevel, WIDTH / 2, 340, 18, C.gray, 'center');
   } else {
-    const list = getScores().slice(0, 10);
-    if (!list.length) {
-      text('Пока нет результатов', WIDTH / 2, 240, 22, C.gray, 'center');
-    } else {
+    // Онлайн-топ Яндекс Игр; вне платформы — локальный топ
+    fetchYandexTop(false);
+    if (yandexTop.length) {
       let y = 165;
-      for (let i = 0; i < list.length; i++) {
-        const e = list[i];
-        const date = new Date(e.d || 0).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
-        const av = AVATARS.find(a => a.id === e.av) || AVATARS[0];
-        const fr = FRAMES.find(f => f.id === e.fr) || FRAMES[0];
-        drawAvatar(WIDTH / 2 - 150, y - 4, 28, av, fr, performance.now());
-        text((i + 1) + '. ' + (e.n || 'Игрок') + ' — ' + e.s + ' (' + modeLabel(e.m) + ', ' + date + ')', WIDTH / 2 - 110, y + 2, 16, i === 0 ? C.gold : C.text);
-        y += 38;
+      for (let i = 0; i < yandexTop.length; i++) {
+        const e = yandexTop[i];
+        const name = (e.player && e.player.publicName) || 'Игрок';
+        const ex = e.extraData ? ' (' + e.extraData + ')' : '';
+        text(e.rank + '. ' + name + ' — ' + e.score + ex, WIDTH / 2, y + 2, 16, i === 0 ? C.gold : C.text, 'center');
+        y += 34;
+      }
+      if (yandexUserRank > 0) {
+        text('Твоё место: ' + yandexUserRank, WIDTH / 2, 520, 16, C.gold, 'center');
+      }
+      text('🌐 Топ игроков Яндекс Игр', WIDTH / 2, 560, 13, C.gray, 'center');
+    } else {
+      const list = getScores().slice(0, 10);
+      if (!list.length) {
+        text('Пока нет результатов', WIDTH / 2, 240, 22, C.gray, 'center');
+      } else {
+        let y = 165;
+        for (let i = 0; i < list.length; i++) {
+          const e = list[i];
+          const date = new Date(e.d || 0).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+          const av = AVATARS.find(a => a.id === e.av) || AVATARS[0];
+          const fr = FRAMES.find(f => f.id === e.fr) || FRAMES[0];
+          drawAvatar(WIDTH / 2 - 150, y - 4, 28, av, fr, performance.now());
+          text((i + 1) + '. ' + (e.n || 'Игрок') + ' — ' + e.s + ' (' + modeLabel(e.m) + ', ' + date + ')', WIDTH / 2 - 110, y + 2, 16, i === 0 ? C.gold : C.text);
+          y += 38;
+        }
       }
     }
   }

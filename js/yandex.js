@@ -1,16 +1,9 @@
 // ============================================
 // YANDEX GAMES SDK
 // ============================================
-// Если запущено не на платформе Яндекс Игр (локальная разработка,
-// другой хостинг) — скрипт sdk.js просто не подключится, и вся игра
-// должна продолжать работать как обычно, только без рекламы.
-
 let ysdk = null;
 let ysdkReady = false;
 
-// Показывать ли рекламу на самом деле или подставлять "фейковую" мгновенную
-// награду при разработке вне Яндекса. На проде (когда ysdk реально
-// инициализирован) этот флаг ни на что не влияет.
 const YSDK_DEV_FALLBACK = true;
 
 function initYandexSDK() {
@@ -41,15 +34,13 @@ function initYandexSDK() {
 }
 initYandexSDK();
 
-// Вызывается один раз, когда игрок реально может начать играть
-// (меню отрисовано, ввод настроен). Обязательное требование Яндекса.
 function notifyGameReady() {
   if (ysdkReady && ysdk && ysdk.features && ysdk.features.LoadingAPI) {
     ysdk.features.LoadingAPI.ready();
   }
 }
 
-// --- Пауза игры на время показа рекламы (переиспользуем механизм quickPaused) ---
+// --- Пауза игры на время показа рекламы ---
 function pauseForAd() {
   stopMusic();
   if (audioCtx) audioCtx.suspend();
@@ -58,6 +49,7 @@ function pauseForAd() {
     pauseStart = performance.now();
   }
 }
+
 function resumeAfterAd() {
   if (audioCtx) audioCtx.resume();
   if (quickPaused) {
@@ -71,9 +63,6 @@ function resumeAfterAd() {
 // ============================================
 // REWARDED VIDEO
 // ============================================
-// callbacks: { onReward, onClose(wasShown), onUnavailable }
-// onReward вызывается ТОЛЬКО если ролик реально досмотрен до конца —
-// именно тут нужно начислять монеты/жизни/спины, не раньше.
 function showRewardedAd(callbacks = {}) {
   const { onReward, onClose, onUnavailable } = callbacks;
 
@@ -106,17 +95,16 @@ function showRewardedAd(callbacks = {}) {
 }
 
 // ============================================
-// INTERSTITIAL (полноэкранная реклама между забегами)
+// INTERSTITIAL
 // ============================================
 let lastInterstitialTime = 0;
-const INTERSTITIAL_COOLDOWN_MS = 120000; // не чаще раза в 2 минуты
+const INTERSTITIAL_COOLDOWN_MS = 120000;
 
 function showInterstitialAd() {
   if (!ysdkReady || !ysdk) return;
   const now = Date.now();
   if (now - lastInterstitialTime < INTERSTITIAL_COOLDOWN_MS) return;
   lastInterstitialTime = now;
-
   ysdk.adv.showFullscreenAdv({
     callbacks: {
       onOpen: () => pauseForAd(),
@@ -127,4 +115,56 @@ function showInterstitialAd() {
       }
     }
   });
+}
+
+// ============================================
+// ЛИДЕРБОРДЫ
+// ============================================
+// Должно совпадать с «Техническим названием» в Консоли!
+const LB_NAME = 'snakePixelScore';
+
+// Отправка результата (только авторизованные игроки, лимит 1 раз/сек)
+function submitScoreToYandex(score, extra) {
+  if (!ysdkReady || !ysdk || score <= 0) return;
+  Promise.resolve(ysdk.isAvailableMethod('leaderboards.setScore'))
+    .then(ok => {
+      if (!ok) return;
+      return ysdk.leaderboards.setScore(LB_NAME, Math.floor(score), extra || '');
+    })
+    .catch(err => console.warn('LB setScore error', err));
+}
+
+// Топ игроков (кэш 60 сек — лимит Яндекса 20 запросов / 5 мин)
+let yandexTop = [];
+let yandexUserRank = 0;
+let yandexTopTime = 0;
+let yandexTopLoading = false;
+
+function fetchYandexTop(force) {
+  if (!ysdkReady || !ysdk) return;
+  const now = Date.now();
+  if (yandexTopLoading) return;
+  if (!force && now - yandexTopTime < 60000) return;
+  yandexTopLoading = true;
+  ysdk.leaderboards.getEntries(LB_NAME, { quantityTop: 10, includeUser: true, quantityAround: 1 })
+    .then(res => {
+      const seen = {};
+      const list = [];
+      (res.entries || []).forEach(e => {
+        if (!e || !e.player) return;
+        if (seen[e.player.uniqueID]) return;
+        seen[e.player.uniqueID] = true;
+        list.push(e);
+      });
+      list.sort((a, b) => a.rank - b.rank);
+      yandexTop = list.slice(0, 10);
+      yandexUserRank = res.userRank || 0;
+      yandexTopTime = Date.now();
+      yandexTopLoading = false;
+    })
+    .catch(err => {
+      console.warn('LB getEntries error', err);
+      yandexTopTime = Date.now();
+      yandexTopLoading = false;
+    });
 }

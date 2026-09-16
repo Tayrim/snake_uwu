@@ -47,6 +47,8 @@ function logScore(sc, m) {
   a.push({ s: sc, m: m, d: Date.now(), n: nick, av: avatarId, fr: currentFrame().id });
   a.sort((x, y) => y.s - x.s);
   saveScores(a.slice(0, 50));
+  // ОНЛАЙН-РЕЙТИНГ: отправляем результат в лидерборд Яндекс Игр
+  submitScoreToYandex(sc, modeLabel(m));
 }
 function coinsFromScore(sc) { return Math.floor(sc * COIN_RATE); }
 
@@ -234,7 +236,7 @@ function calcBtns() {
   BTN_GO_RESTART = { x: cx, y: 356, w, h: 46 };
   BTN_GO_MENU = { x: cx, y: 410, w, h: 46 };
 
-  // ЭКРАН ПОБЕДЫ УРОВНЯ: то же самое
+  // ЭКРАН ПОБЕДЫ УРОВНЯ
   BTN_LW_X2 = { x: cx + 40, y: 300, w: 220, h: 32 };
   BTN_LW_NEXT = { x: cx, y: 340, w, h: 46 };
   BTN_LW_RETRY = { x: cx, y: 394, w, h: 46 };
