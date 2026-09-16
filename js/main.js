@@ -61,10 +61,27 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// Блокировка long-tap и контекстного меню (требование 1.6.1.8, 1.6.2.7)
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+canvas.style.userSelect = 'none';
+canvas.style.webkitUserSelect = 'none';
+canvas.style.webkitTouchCallout = 'none';
+
 function loop(now) {
   let dt = now - lastFrame;
   lastFrame = now;
   if (dt > 100) dt = 100;
+
+  // Обновление состояния геймплея для GameplayAPI
+  const isGameplayNow = state === 'play' || state === 'countdown';
+  if (isGameplayNow && !window._yandexGameplayActive) {
+    window._yandexGameplayActive = true;
+    gameplayStart();
+  } else if (!isGameplayNow && window._yandexGameplayActive) {
+    window._yandexGameplayActive = false;
+    gameplayStop();
+  }
+
   update(now, dt);
   draw(now);
 
@@ -88,7 +105,6 @@ requestAnimationFrame(() => {
   notifyGameReady();
 });
 
-// Музыка стартует после первого взаимодействия
 function tryStartMusic() {
   ensureAudio();
   if (!currentMusicMode && musicVolume > 0.01) {

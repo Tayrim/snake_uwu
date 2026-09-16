@@ -228,3 +228,27 @@ body.touch.ingame #controls {
 .qItem button.ok2 { background: #eab308; color: #0f172a; }
 .qItem.done { border-color: #4ade80; opacity: 0.75; }
 .qItem.ready { border-color: #eab308; }
+/* ТРЕБОВАНИЯ ЯНДЕКС ИГР: запрет long-tap, скролла, выделения */
+html, body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+canvas, button, input {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Запрет pinch-zoom и swipe-to-refresh на мобильном */
+body {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}

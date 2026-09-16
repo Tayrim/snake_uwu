@@ -8,7 +8,7 @@ const YSDK_DEV_FALLBACK = true;
 
 function initYandexSDK() {
   let attempts = 0;
-  const maxAttempts = 100; // ~5 секунд ожидания загрузки sdk.js
+  const maxAttempts = 100;
 
   function tryInit() {
     if (typeof YaGames !== 'undefined') {
@@ -17,6 +17,27 @@ function initYandexSDK() {
           ysdk = sdk;
           ysdkReady = true;
           console.log('Yandex SDK initialized');
+
+          // ОБРАБОТКА ПАУЗЫ ОТ ЯНДЕКСА (требование 1.19.4)
+          // Яндекс может поставить игру на паузу со своей стороны
+          ysdk.on('game_api_pause', () => {
+            if (state === 'play' && !quickPaused) {
+              quickPaused = true;
+              pauseStart = performance.now();
+              stopMusic();
+              if (audioCtx) audioCtx.suspend();
+            }
+          });
+
+          ysdk.on('game_api_resume', () => {
+            if (quickPaused) {
+              pausedAccum += performance.now() - pauseStart;
+              quickPaused = false;
+              lastStep = performance.now();
+            }
+            if (audioCtx) audioCtx.resume();
+            if (musicVolume > 0.01) startMusic(isMenuLikeState() ? 'menu' : 'game');
+          });
         })
         .catch(err => {
           console.warn('Yandex SDK init error', err);
@@ -40,7 +61,21 @@ function notifyGameReady() {
   }
 }
 
-// --- Пауза игры на время показа рекламы ---
+// ============================================
+// GAMEPLAY API (требование 1.19.3)
+// ============================================
+function gameplayStart() {
+  if (ysdkReady && ysdk && ysdk.features && ysdk.features.GameplayAPI) {
+    ysdk.features.GameplayAPI.start();
+  }
+}
+
+function gameplayStop() {
+  if (ysdkReady && ysdk && ysdk.features && ysdk.features.GameplayAPI) {
+    ysdk.features.GameplayAPI.stop();
+  }
+}
+
 function pauseForAd() {
   stopMusic();
   if (audioCtx) audioCtx.suspend();
@@ -120,10 +155,8 @@ function showInterstitialAd() {
 // ============================================
 // ЛИДЕРБОРДЫ
 // ============================================
-// Должно совпадать с «Техническим названием» в Консоли!
 const LB_NAME = 'snakePixelScore';
 
-// Отправка результата (только авторизованные игроки, лимит 1 раз/сек)
 function submitScoreToYandex(score, extra) {
   if (!ysdkReady || !ysdk || score <= 0) return;
   Promise.resolve(ysdk.isAvailableMethod('leaderboards.setScore'))
@@ -134,7 +167,6 @@ function submitScoreToYandex(score, extra) {
     .catch(err => console.warn('LB setScore error', err));
 }
 
-// Топ игроков (кэш 60 сек — лимит Яндекса 20 запросов / 5 мин)
 let yandexTop = [];
 let yandexUserRank = 0;
 let yandexTopTime = 0;
